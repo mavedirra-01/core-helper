@@ -301,11 +301,13 @@ def msfconsole_verify(plugin_id, module, output_file):
 """
 snmp_verify_public("41028", "snmp_check.txt") # snmp public write test and info gather
 nmap_verify_script("104743", "ssl-enum-ciphers", "tls_version.txt") # tls version
-nmap_verify_script(['51192', '20007', '57582'], "ssl-cert", "ssl_cert.txt") # expired ssl, self-signed ssl, ssl cert cant be trusted
-nmap_verify_script(["70658", "153953"], "ssh2-enum-algos", "ssh_ciphers.txt") # SSH cbc ciphers, SSH weak-keyx
+nmap_verify_script(['51192', '20007', '57582', '15901'], "ssl-cert", "ssl_cert.txt") # ssl cant be trusted, SSL v2/3, self-signed ssl, ssl cert expiry
+nmap_verify_script(["70658", "153953", "71049"], "ssh2-enum-algos", "ssh_ciphers.txt") # SSH cbc ciphers, SSH weak-keyx, SSH MAC algos
 nmap_verify_version("138475", "esxi_version.txt") # esxi version
 nmap_verify_version("168746", "vcenter_version.txt") # VMware vcenter version
-
+nmap_verify_version(["58987","166901", "161971", "165545"], "php_version.txt") # PHP unsupported version detection
+nmap_verify_version(["150280", "153583", "156255", "158900", "161454", "161948", "170113", "153585", "153586"], "apache_version.txt")
+nmap_verify_version(["152782", "160477", "162420", "148125", "148402", "158974", "144047", "157228", "162721"])
 
 #########################################################################################
 if msf_check == 1:
