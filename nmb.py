@@ -306,8 +306,8 @@ nmap_verify_script(["70658", "153953", "71049"], "ssh2-enum-algos", "ssh_ciphers
 nmap_verify_version("138475", "esxi_version.txt") # esxi version
 nmap_verify_version("168746", "vcenter_version.txt") # VMware vcenter version
 nmap_verify_version(["58987","166901", "161971", "165545"], "php_version.txt") # PHP unsupported version detection
-nmap_verify_version(["150280", "153583", "156255", "158900", "161454", "161948", "170113", "153585", "153586"], "apache_version.txt")
-nmap_verify_version(["152782", "160477", "162420", "148125", "148402", "158974", "144047", "157228", "162721"])
+nmap_verify_version(["150280", "153583", "156255", "158900", "161454", "161948", "170113", "153585", "153586"], "apache_version.txt") # Apache version
+nmap_verify_version(["152782", "160477", "162420", "148125", "148402", "158974", "144047", "157228", "162721"], "openssl_version.txt") # Openssl version
 
 #########################################################################################
 if msf_check == 1:
