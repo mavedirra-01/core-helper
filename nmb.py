@@ -161,7 +161,7 @@ def nmap_verify_version(plugin_id, output_file):
                 f.write(nmap_output.stdout.decode())
         with open(output_file, "r") as f:
             content = f.read()
-        if "Host seems down" in content:
+        if "Filtered" in content:
             print(red, "Error: Host is down -", name)
         else:
             print(green, "Finding:", name, "Verified")
@@ -218,7 +218,7 @@ def nmap_verify_script(plugin_id, script, output_file):
                 f.write(nmap_output.stdout.decode())
         with open(output_file, "r") as f:
             content = f.read()
-        if "Host seems down" in content:
+        if "Filtered" in content:
             print(red, "Error: Host is down -", name)
         else:
             print(green, "Finding:", name, "Verified") #### add something about successful verification of (name)
@@ -284,7 +284,7 @@ def msfconsole_verify(plugin_id, module, output_file):
         if os.path.isfile(dst_file):
             with open(dst_file, 'r') as f:
                 output = f.read()
-                if "Hash found" in output:
+                if "Hash found" or "Opened" in output:
                     print(green, "Exploit", name, "successful!")
                 else:
                     print(red, "Error: ", name, "Exploit failed. Check the output file for more information.")
@@ -308,12 +308,13 @@ nmap_verify_version("168746", "vcenter_version.txt") # VMware vcenter version
 nmap_verify_version(["58987","166901", "161971", "165545"], "php_version.txt") # PHP unsupported version detection
 nmap_verify_version(["150280", "153583", "156255", "158900", "161454", "161948", "170113", "153585", "153586"], "apache_version.txt") # Apache version
 nmap_verify_version(["152782", "160477", "162420", "148125", "148402", "158974", "144047", "157228", "162721"], "openssl_version.txt") # Openssl version
+nmap_verify_version(["72692", "95438", "121119", "133845", "66428", "72691", "74247", "74246", "77475", "83764", "88936", "88936", "94578", "96003", "99367", "100681", "103329", "103329", "103698", "103782", "106975", "118035", "12116", "12117", "12118", "121120", "121121", "136770", "138851", "147163", "148405", "151502"], "tomcat_version.txt")
+
 
 #########################################################################################
 if msf_check == 1:
     msfconsole_verify(["80101", "72063"], "auxiliary/scanner/ipmi/ipmi_dumphashes", "ipmi_output.txt") # IPMI
-
-
+    msfconsole_verify("117615", "exploit/linux/http/hadoop_unauth_exec", "hadoop_shell.txt") # Apache Hadoop YARN
 
 
 
