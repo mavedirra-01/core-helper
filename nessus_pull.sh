@@ -1,5 +1,5 @@
 #!/bin/bash
-username="bulletproof"
+username="drone"
 password="BulletH@x"
 
 # set your Nessus hostname
