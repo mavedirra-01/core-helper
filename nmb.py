@@ -1,5 +1,6 @@
 #!/usr/bin/python3
-
+# Author: Connor Fancy
+# Version: 1.0
 import sys
 import csv
 import subprocess
@@ -23,7 +24,8 @@ rc = '\033[0m'
 - zip evidence folder 
 
 ## Done
-
+- created bash script to pull latest nessus scan in csv format 
+- add capabilites to scan next ip in list if the first one is filtered or no longer alive
 - fixed metasploit looping
 - fixed arguments and error handling : 
     - if file exists but does not have contents == no error
@@ -35,10 +37,12 @@ rc = '\033[0m'
     - if path to file is valid but file is not .csv == error 
     - if user inputs incorrect arg == error
 """
-
+found = False
 make_evidence = "evidence"
 if not os.path.exists(make_evidence):
     os.makedirs(make_evidence)
+cwd = os.getcwd()
+print(blue,"Evidence will be saved to: " + cwd + "/" + make_evidence)
 run_msf = 0
 msf_check = 0
 ####################################################################
@@ -73,13 +77,14 @@ else:
         print(bold,"Additional options:", rc)
         print("",blue, bold,"--msf\t",rc," run script with metasploit checks enabled", bold, "Note:", rc, "this will be much slower")
         exit()
-print("Script started at:", time.ctime())
+print(blue,"Script started at:", time.ctime())
 #####################################################################
 
 def snmp_verify_public(plugin_id, output_file):
 # Open the Nessus .csv file and read it
     ips = []
     ports = []
+    global found
     with open(file, 'r', encoding="utf8") as f:
         reader = csv.reader(f)
         # Iterate through each row
@@ -107,11 +112,15 @@ def snmp_verify_public(plugin_id, output_file):
         with open(output_file, "r") as f:
             content = f.read()
         if "SNMP request timeout" in content:
-            print(red, "Error: Host is down -", name)
+            if i == len(ips) - 1:
+                print(red, "Error: All IP addresses are down -", name)
+                break
         else:
+            found = True
             print(green, "Finding:", name, bold,"Verified",rc)
-    # Create file incase plugin doesn't exist in file 
-    #open(output_file, "a").close()
+            break
+    # if not found:
+    #     return
     # Removal of empty lines 
     if os.path.isfile(output_file):
         tmp_file="tmp.txt"
@@ -134,6 +143,7 @@ def nmap_verify_version(plugin_id, output_file):
 # Open the Nessus .csv file and read it
     ips = []
     ports = []
+    global found
     with open(file, 'r', encoding="utf8") as f:
         reader = csv.reader(f)
 
@@ -162,10 +172,16 @@ def nmap_verify_version(plugin_id, output_file):
                 f.write(nmap_output.stdout.decode())
         with open(output_file, "r") as f:
             content = f.read()
-        if "Filtered" in content:
-            print(red, "Error: Host is down -", name)
+        if "filtered" in content:
+            if i == len(ips) - 1:
+                print(red, "Error: All IP addresses are down -", name)
+                break
         else:
             print(green, "Finding:", name, bold,"Verified",rc)
+            found = True
+            break
+    # if not found:
+    #     return
     # Create file incase plugin doesn't exist in file 
     #open(output_file, "a").close()
     if os.path.isfile(output_file):
@@ -190,6 +206,7 @@ def nmap_verify_version(plugin_id, output_file):
 def nmap_verify_os_version(plugin_id, output_file):
 # Open the Nessus .csv file and read it
     ips = []
+    global found
     with open(file, 'r', encoding="utf8") as f:
         reader = csv.reader(f)
 
@@ -207,6 +224,7 @@ def nmap_verify_os_version(plugin_id, output_file):
                 ips = [ips[0]]
 
     # Iterate through the ips and ports
+    found = False
     for i in range(len(ips)):
         ip = ips[i]
         # Pass the ip and port to nmap
@@ -216,9 +234,15 @@ def nmap_verify_os_version(plugin_id, output_file):
         with open(output_file, "r") as f:
             content = f.read()
         if "No exact OS matches for host" in content:
-            print(red, "Error: No exact OS matches for host -", name)
+            if i == len(ips) - 1:
+                print(red, "Error: All IP addresses are down -", name)
+                break
         else:
             print(green, "Finding:", name, bold,"Verified",rc)
+            found = True
+            break
+    # if not found:
+    #     return
     if os.path.isfile(output_file):
         # Removal of empty lines 
         tmp_file="tmp.txt"
@@ -242,6 +266,7 @@ def nmap_verify_script(plugin_id, script, output_file):
 # Open the Nessus .csv file and read it
     ips = []
     ports = []
+    global found
     with open(file, 'r', encoding="utf8") as f:
         reader = csv.reader(f)
 
@@ -259,7 +284,6 @@ def nmap_verify_script(plugin_id, script, output_file):
                 ports.append(port)
                 # Delete all ips except the first
                 ips = [ips[0]]
-
     # Iterate through the ips and ports
     for i in range(len(ips)):
         ip = ips[i]
@@ -270,10 +294,16 @@ def nmap_verify_script(plugin_id, script, output_file):
                 f.write(nmap_output.stdout.decode())
         with open(output_file, "r") as f:
             content = f.read()
-        if "Filtered" in content:
-            print(red, "Error: Host is down -", name)
+        if "filtered" in content:
+            if i == len(ips) - 1:
+                print(red, "Error: All IP addresses are down -", name)
+                break
         else:
-            print(green, "Finding:", name, bold,"Verified",rc) #### add something about successful verification of (name)
+            print(green, "Finding:", name, bold,"Verified",rc) 
+            found = True
+            break
+    # if not found:
+    #     return
 
     # Create file incase plugin doesn't exist in file 
     # Removal of empty lines
@@ -372,4 +402,4 @@ if msf_check == 1:
 
 ###############################################################################################
 
-print("Script finished at:", time.ctime())
+print(blue,"Script finished at:", time.ctime())
