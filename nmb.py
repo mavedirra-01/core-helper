@@ -58,6 +58,7 @@ if os.path.isfile(file):
     print(green, "File exists:", file)
 else:
     print(red, "File does not exist:", file)
+    print(yellow, "Did you run the nessus_pull.sh script?")
     sys.exit()
 if not file.endswith(".csv"):
     print(red, "Error: The file must be of type .csv")
