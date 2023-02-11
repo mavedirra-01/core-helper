@@ -109,7 +109,7 @@ def snmp_verify_public(plugin_id, output_file):
         if "SNMP request timeout" in content:
             print(red, "Error: Host is down -", name)
         else:
-            print(green, "Finding:", name, "Verified")
+            print(green, "Finding:", name, bold,"Verified",rc)
     # Create file incase plugin doesn't exist in file 
     #open(output_file, "a").close()
     # Removal of empty lines 
@@ -165,7 +165,7 @@ def nmap_verify_version(plugin_id, output_file):
         if "Filtered" in content:
             print(red, "Error: Host is down -", name)
         else:
-            print(green, "Finding:", name, "Verified")
+            print(green, "Finding:", name, bold,"Verified",rc)
     # Create file incase plugin doesn't exist in file 
     #open(output_file, "a").close()
     if os.path.isfile(output_file):
@@ -218,7 +218,7 @@ def nmap_verify_os_version(plugin_id, output_file):
         if "No exact OS matches for host" in content:
             print(red, "Error: No exact OS matches for host -", name)
         else:
-            print(green, "Finding:", name, "Verified")
+            print(green, "Finding:", name, bold,"Verified",rc)
     if os.path.isfile(output_file):
         # Removal of empty lines 
         tmp_file="tmp.txt"
@@ -273,7 +273,7 @@ def nmap_verify_script(plugin_id, script, output_file):
         if "Filtered" in content:
             print(red, "Error: Host is down -", name)
         else:
-            print(green, "Finding:", name, "Verified") #### add something about successful verification of (name)
+            print(green, "Finding:", name, bold,"Verified",rc) #### add something about successful verification of (name)
 
     # Create file incase plugin doesn't exist in file 
     # Removal of empty lines
@@ -336,7 +336,7 @@ def msfconsole_verify(plugin_id, module, output_file):
             with open(dst_file, 'r') as f:
                 output = f.read()
                 if "Hash found" or "Opened" in output:
-                    print(green, "Exploit", name, "successful!")
+                    print(green, "Exploit", name, bold,"successful!",rc)
                 else:
                     print(red, "Error: ", name, "Exploit failed. Check the output file for more information.")
 
