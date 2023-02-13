@@ -88,7 +88,6 @@ cwd = os.getcwd()
 print(blue,"Evidence will be saved to: " + cwd + "/" + make_evidence)
 print(blue,"Script started at:", time.ctime())
 #####################################################################
-
 def custom_verify(plugin_id, script_args, output_file):
 # Open the Nessus .csv file and read it
     ips = []
@@ -177,12 +176,12 @@ def nmap_verify(plugin_id, args, output_file):
         ip = ips[i]
         port = ports[i]
         # Pass the ip and port to nmap
-        nmap_output = subprocess.run([f'nmap -Pn -T4 {args} {port} {ip} '], capture_output=True, shell=True)
+        nmap_output = subprocess.run([f'nmap -T4 {args} {port} {ip} '], capture_output=True, shell=True)
         with open(output_file, "w") as f:
                 f.write(nmap_output.stdout.decode())
         with open(output_file, "r") as f:
             content = f.read()
-        if "filtered" in content:
+        if "filtered" or "Host seems down" in content:
             if i == len(ips) - 1:
                 print(red, "Error: All IP addresses might be down, please review results manually -", name)
                 break
@@ -238,12 +237,12 @@ def nmap_verify_sudo(plugin_id, args, output_file):
         ip = ips[i]
         port = ports[i]
         # Pass the ip and port to nmap
-        nmap_output = subprocess.run([f'sudo nmap -T4 -Pn {args} {ip} '], capture_output=True, shell=True)
+        nmap_output = subprocess.run([f'sudo nmap -T4 {args} {ip} '], capture_output=True, shell=True)
         with open(output_file, "w") as f:
                 f.write(nmap_output.stdout.decode())
         with open(output_file, "r") as f:
             content = f.read()
-        if "No exact OS matches for host" or "Too many fingerprints match this host" in content:
+        if "No exact OS matches for host" or "Too many fingerprints match this host" or "Host seems down" in content:
             if i == len(ips) - 1:
                 print(yellow, "Error: All IP addresses might be down, please review results manually -", name)
                 break
@@ -350,7 +349,7 @@ if query == 1:
 #############################################################################################
 custom_verify("41028", "snmp-check -v 2c -c public -w", "snmp_check.txt") # snmp public write test and info gather
 custom_verify("57608", "crackmapexec smb --gen-relay-list smb_targets.txt", "smb_targets.txt") # SMB signing not required
-custom_verify("97861", "sudo ntpd -c monlist", "ntp_mode6.txt") # NTP Mode 6 scanner
+#custom_verify("97861", "sudo ntpd -c monlist", "ntp_mode6.txt") # NTP Mode 6 scanner
 nmap_verify("104743", "--script ssl-enum-ciphers -p", "tls_version.txt") # tls version
 nmap_verify(['51192', '20007', '57582', '15901'], "--script ssl-cert -p", "ssl_cert.txt") # ssl cant be trusted, SSL v2/3, self-signed ssl, ssl cert expiry
 nmap_verify(["70658", "153953", "71049"], "--script ssh2-enum-algos -p", "ssh_ciphers.txt") # SSH cbc ciphers, SSH weak-keyx, SSH MAC algos
@@ -360,7 +359,7 @@ nmap_verify(["58987","166901", "161971", "165545"], "-sC -sV -p", "php_version.t
 nmap_verify(["150280", "153583", "156255", "158900", "161454", "161948", "170113", "153585", "153586"], "-sC -sV -p", "apache_version.txt") # Apache version
 nmap_verify(["152782", "160477", "162420", "148125", "148402", "158974", "144047", "157228", "162721"], "-sC -sV -p", "openssl_version.txt") # Openssl version
 nmap_verify(["72692", "95438", "121119", "133845", "66428", "72691", "74247", "74246", "77475", "83764", "88936", "88936", "94578", "96003", "99367", "100681", "103329", "103329", "103698", "103782", "106975", "118035", "12116", "12117", "12118", "121120", "121121", "136770", "138851", "147163", "148405", "151502"], "-sC -sV -p", "tomcat_version.txt")
-nmap_verify_sudo("33850", "-sC -sV -O -p", "unix_os_version.txt") # Unsupported unix OS
+nmap_verify_sudo("33850", "-sC -sV -O", "unix_os_version.txt") # Unsupported unix OS
 nmap_verify_sudo("108797", "-sC -sV -O", "windows_os_version.txt") # Unsupported windows OS
 
 #########################################################################################
