@@ -151,7 +151,7 @@ def custom_verify(plugin_id, script_args, output_file):
         ip = ips[i]
         port = ports[i]
         # Pass the ip and port to command
-        print(blue,f"Currently testing {ip} for {name}")
+        print(blue,f"Currently testing {ip}:{port} for {name}")
         scan_output = subprocess.run([f'{script_args} {ip}'], capture_output=True, shell=True)
         with open(output_file, "w") as f:
                 f.write(scan_output.stdout.decode())
@@ -212,7 +212,7 @@ def nmap_verify(plugin_id, args, output_file):
         ip = ips[i]
         port = ports[i]
         # Pass the ip and port to nmap
-        print(blue,f"Currently testing {ip} for {name}")
+        print(blue,f"Currently testing {ip}:{port} for {name}")
         nmap_output = subprocess.run([f'nmap -T4 {args} {port} {ip} '], capture_output=True, shell=True)
         with open(output_file, "w") as f:
                 f.write(nmap_output.stdout.decode())
@@ -379,7 +379,7 @@ print(blue,"Script started at:", time.ctime())
 #############################################################################################
 custom_verify("41028", "snmp-check -v 2c -c public -w", "snmp_check.txt") # snmp public write test and info gather
 custom_verify("57608", "crackmapexec smb --gen-relay-list smb_targets.txt", "smb_targets.txt") # SMB signing not required
-nmap_verify("104743", "--script ssl-enum-ciphers -p", "tls_version.txt") # tls version
+nmap_verify(["104743", "157288"], "--script ssl-enum-ciphers -p", "tls_version.txt") # tls version
 nmap_verify(['51192', '20007', '57582', '15901'], "--script ssl-cert -p", "ssl_cert.txt") # ssl cant be trusted, SSL v2/3, self-signed ssl, ssl cert expiry
 nmap_verify(["70658", "153953", "71049"], "--script ssh2-enum-algos -p", "ssh_ciphers.txt") # SSH cbc ciphers, SSH weak-keyx, SSH MAC algos
 nmap_verify("138475", "-sC -sV -p", "esxi_version.txt") # esxi version
