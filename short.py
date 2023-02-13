@@ -120,14 +120,7 @@ def nmap_verify(plugin_id, args, output_file):
                 f.write(nmap_output.stdout.decode())
         with open(output_file, "r") as f:
             content = f.read()
-        if not content:
-            #print(red, "Error: Output file is blank, running the command again", rc)
-            nmap_output = subprocess.run([f'sudo nmap -T4 -Pn {args} {port} {ip} &'], capture_output=True, shell=True)
-            with open(output_file, "w") as f:
-                f.write(nmap_output.stdout.decode())
-            with open(output_file, "r") as f:
-                content = f.read()
-        if "filtered" or "No exact OS matches for host" in content:
+        if "filtered" in content:
             if i == len(ips) - 1:
                 print(red, "Error: All IP addresses might be down, please review results manually -", name)
                 break
