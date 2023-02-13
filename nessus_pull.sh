@@ -1,6 +1,6 @@
 #!/bin/bash
 username="drone"
-password="BulletH@x"
+password="PASSWORD-GOES-HERE"
 
 # set your Nessus hostname
 host="https://localhost:8834"
