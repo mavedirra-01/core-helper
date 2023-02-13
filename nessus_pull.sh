@@ -1,6 +1,6 @@
 #!/bin/bash
-username="drone"
-password="PASSWORD-GOES-HERE"
+read -p "Nessus Username: " username
+read -sp "Nessus Password: " password
 
 # set your Nessus hostname
 host="https://localhost:8834"
