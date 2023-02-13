@@ -237,16 +237,16 @@ def nmap_verify_sudo(plugin_id, args, output_file):
         ip = ips[i]
         port = ports[i]
         # Pass the ip and port to nmap
-        nmap_output = subprocess.run([f'sudo nmap -T4 {args} {ip} '], capture_output=True, shell=True)
+        nmap_output_sudo = subprocess.run([f'sudo nmap -T4 {args} {ip} '], capture_output=True, shell=True)
         with open(output_file, "w") as f:
-                f.write(nmap_output.stdout.decode())
+                f.write(nmap_output_sudo.stdout.decode())
         with open(output_file, "r") as f:
             content = f.read()
         if "Host seems down" in content:
             if i == len(ips) - 1:
                 print(red, "Error: All IP addresses are down -", name)
                 break
-        if "No exact OS matches for host" or "Too many fingerprints match this host" in content:
+        if "No exact OS matches for host" in content:
                 print(yellow, "Error: All IP addresses might be down, please review results manually -", name)
                 found = True
                 break
