@@ -181,7 +181,7 @@ def nmap_verify(plugin_id, args, output_file):
                 f.write(nmap_output.stdout.decode())
         with open(output_file, "r") as f:
             content = f.read()
-        if "filtered" or "Host seems down" in content:
+        if "Host seems down" in content:
             if i == len(ips) - 1:
                 print(red, "Error: All IP addresses might be down, please review results manually -", name)
                 break
