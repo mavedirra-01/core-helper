@@ -108,7 +108,7 @@ def custom_verify(plugin_id, script_args, output_file):
                 ips.append(ip)
                 ports.append(port)
                 # Delete all ips except the first
-                ips = [ips[0]]
+                # ips = [ips[0]]
 
     # Iterate through the ips and ports
     for i in range(len(ips)):
@@ -170,14 +170,14 @@ def nmap_verify(plugin_id, args, output_file):
                 ports.append(port)
                 # Delete all ips except the first
                 # ips = [ips[0]]
-                print(ips)
+                # print(ips)
 
     # Iterate through the ips and ports
     for i in range(len(ips)):
         ip = ips[i]
         port = ports[i]
         # Pass the ip and port to nmap
-        nmap_output = subprocess.run([f'nmap -Pn -T4 {args} {port} {ip} &'], capture_output=True, shell=True)
+        nmap_output = subprocess.run([f'nmap -Pn -T4 {args} {port} {ip} '], capture_output=True, shell=True)
         with open(output_file, "w") as f:
                 f.write(nmap_output.stdout.decode())
         with open(output_file, "r") as f:
@@ -230,7 +230,7 @@ def nmap_verify_sudo(plugin_id, args, output_file):
                 ips.append(ip)
                 ports.append(port)
                 # Delete all ips except the first
-                ips = [ips[0]]
+                # ips = [ips[0]]
 
 
     # Iterate through the ips and ports
@@ -238,7 +238,7 @@ def nmap_verify_sudo(plugin_id, args, output_file):
         ip = ips[i]
         port = ports[i]
         # Pass the ip and port to nmap
-        nmap_output = subprocess.run([f'sudo nmap -T4 -Pn {args} {ip} &'], capture_output=True, shell=True)
+        nmap_output = subprocess.run([f'sudo nmap -T4 -Pn {args} {ip} '], capture_output=True, shell=True)
         with open(output_file, "w") as f:
                 f.write(nmap_output.stdout.decode())
         with open(output_file, "r") as f:
