@@ -108,7 +108,7 @@ def custom_verify(plugin_id, script_args, output_file):
                 ips.append(ip)
                 ports.append(port)
                 # Delete all ips except the first
-                # ips = [ips[0]]
+                ips = [ips[0]]
 
     # Iterate through the ips and ports
     for i in range(len(ips)):
@@ -169,7 +169,7 @@ def nmap_verify(plugin_id, args, output_file):
                 ips.append(ip)
                 ports.append(port)
                 # Delete all ips except the first
-                # ips = [ips[0]]
+                ips = [ips[0]]
 
     # Iterate through the ips and ports
     for i in range(len(ips)):
@@ -229,7 +229,7 @@ def nmap_verify_sudo(plugin_id, args, output_file):
                 ips.append(ip)
                 ports.append(port)
                 # Delete all ips except the first
-                # ips = [ips[0]]
+                ips = [ips[0]]
 
     # Iterate through the ips and ports
     for i in range(len(ips)):
