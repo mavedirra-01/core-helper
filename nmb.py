@@ -244,10 +244,9 @@ def nmap_verify_sudo(plugin_id, args, output_file):
             content = f.read()
         if "Host seems down" in content:
             if i == len(ips) - 1:
-                print(yellow, "Error: All IP addresses might be down, please review results manually -", name)
+                print(red, "Error: All IP addresses are down -", name)
                 break
-        elif "No exact OS matches for host" or "Too many fingerprints match this host" in content:
-            if i == len(ips) - 1:
+        if "No exact OS matches for host" or "Too many fingerprints match this host" in content:
                 print(yellow, "Error: All IP addresses might be down, please review results manually -", name)
                 found = True
                 break

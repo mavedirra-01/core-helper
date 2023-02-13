@@ -18,6 +18,8 @@ token=$(echo "$response" | python -c "import sys, json; data = json.load(sys.std
 if [ -z "$token" ]; then
   echo "Error: authentication failed"
   exit 1
+else
+  echo "Authentication Successful"
 fi
 
 # get the policy ID for the specified policy name
@@ -27,6 +29,8 @@ policy_id=$(echo "$response" | python -c "import sys, json; data = json.load(sys
 if [ -z "$policy_id" ]; then
   echo "Error: policy not found"
   exit 1
+else
+  echo "Found policy"
 fi
 
 # get the most recent completed scan for the policy
@@ -45,6 +49,8 @@ file_id=$(echo "$response" | python -c "import sys, json; data = json.load(sys.s
 if [ -z "$file_id" ]; then
   echo "Error: export failed"
   exit 1
+else
+  echo "Export successful - waiting to download"
 fi
 
 # download the exported CSV file
@@ -60,3 +66,5 @@ curl -s -k -o "$csv_file" -H "X-Cookie: token=$token" "$host/scans/$scan_id/expo
 
 # log out
 curl -s -k -X DELETE -H "X-Cookie: token=$token" "$host/session"
+
+echo "File saved to: " $PWD/$csv_file
