@@ -9,6 +9,7 @@ import subprocess
 import os
 import shutil
 import time
+import argparse
 
 ### Colours
 green = "\033[32m[+]\033[0m"
@@ -21,11 +22,12 @@ rc = '\033[0m'
 ## To do
 - optional convert output text files to html or an easier read format (aquatone)
 - add more varations of pluginIDs (this will always be a work in progress)
-- Expand upon usage/help  
-- condense nmap functions into one
+- nmap currently cant tell if an IP has already been scanned, append the list to sort the unique first?
 
 ## Done
 - created bash script to pull latest nessus scan in csv format 
+- Expand upon usage/help ==> argparse
+- condense nmap functions into two
 - less functions, added custom command function
 - add capabilites to scan next ip in list if the first one is filtered or no longer alive
 - find a better way to catalog pluginIDs
@@ -39,60 +41,95 @@ rc = '\033[0m'
     - if path to file is valid but file is not .csv == error 
     - if user inputs incorrect arg == error
 """
-# Globals
-found = False
-run_msf = 0
-msf_check = 0
-query = 0
-####################################################################
-argc = len(sys.argv)
-if argc == 1:
-    print(yellow,bold,"Usage",rc,": nmb.py /path/to/nessus.csv","\n")
-    print(bold,"Additional options:", rc)
-    print(blue,bold,"-m\t",rc," run script with metasploit checks enabled (this will be much slower)")
-    print("",blue, bold,"-q\t",rc," Print list of supported plugins based off CSV file")
-    sys.exit()
-file = sys.argv[1]
-if os.path.isfile(file):
-    print(green, "File exists:", file)
-else:
-    print(red, "File does not exist:", file)
-    print(yellow, "Did you run the nessus_pull.sh script?")
-    sys.exit()
-if not file.endswith(".csv"):
-    print(red, "Error: The file must be of type .csv")
-    print(yellow,bold,"Usage",rc,": nmb.py /path/to/nessus.csv","\n")
-    print(bold,"Additional options:", rc)
-    print(blue,bold,"-m\t",rc," run script with metasploit checks enabled (this will be much slower)")
-    print("",blue, bold,"-q\t",rc," Print list of supported plugins based off CSV file")
-    exit()
-if argc == 2:
-    print(green, "File exists and is in correct format:", file)
-else:
-    options_arg = sys.argv[2]
-    if options_arg == '-m':
-        msf_check = 1
-        print(green, "Starting script with metasploit options enabled ...")
-    elif options_arg == "-q":
-        query = 1
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Nessus csv parse tool.")
+    parser.add_argument("file", type=str, help="Path to nessus_scan_results.csv file.")
+    parser.add_argument("-m", "--metasploit", help="Run script with metasploit checks enabled.", action="store_true")
+    parser.add_argument("-q", "--query", help="Print list of supported plugins based off CSV file.", action="store_true")
+    return parser.parse_args()
+
+def main():
+    global msf_check, query, file, make_evidence, cwd
+    args = parse_args()
+    file = args.file
+
+    if os.path.isfile(file):
+        print(green,"File exists:", file)
     else:
-        print("\n",yellow,bold,"Usage",rc,": nmb.py /path/to/nessus.csv -OptionalArg")
-        print(bold,"Additional options:", rc)
-        print("",blue, bold,"-m\t",rc," Run script with metasploit checks enabled", bold, "Note:", rc, "this will be much slower")
-        print("",blue, bold,"-q\t",rc," Print list of supported plugins based off CSV file")
-        exit()
-make_evidence = "evidence"
-if not os.path.exists(make_evidence):
-    os.makedirs(make_evidence)
-cwd = os.getcwd()
-print(blue,"Evidence will be saved to: " + cwd + "/" + make_evidence)
-print(blue,"Script started at:", time.ctime())
+        print(red,"File does not exist:", file)
+        print(yellow,"Did you run the nessus_pull.sh script?")
+        sys.exit()
+
+    if not file.endswith(".csv"):
+        print(red,"Error: The file must be of type .csv")
+        sys.exit()
+
+    msf_check = args.metasploit
+    query = args.query
+
+    make_evidence = "evidence"
+    if not os.path.exists(make_evidence):
+        os.makedirs(make_evidence)
+    cwd = os.getcwd()
+if __name__ == "__main__":
+    main()
+
+
+
+
+# found = False
+# msf_check = 0
+# msf_check = 0
+# query = 0
+# argc = len(sys.argv)
+# if argc == 1:
+#     print(yellow,bold,"Usage",rc,": nmb.py /path/to/nessus.csv","\n")
+#     print(bold,"Additional options:", rc)
+#     print(blue,bold,"-m\t",rc," run script with metasploit checks enabled (this will be much slower)")
+#     print("",blue, bold,"-q\t",rc," Print list of supported plugins based off CSV file")
+#     sys.exit()
+# file = sys.argv[1]
+# if os.path.isfile(file):
+#     print(green, "File exists:", file)
+# else:
+#     print(red, "File does not exist:", file)
+#     print(yellow, "Did you run the nessus_pull.sh script?")
+#     sys.exit()
+# if not file.endswith(".csv"):
+#     print(red, "Error: The file must be of type .csv")
+#     print(yellow,bold,"Usage",rc,": nmb.py /path/to/nessus.csv","\n")
+#     print(bold,"Additional options:", rc)
+#     print(blue,bold,"-m\t",rc," run script with metasploit checks enabled (this will be much slower)")
+#     print("",blue, bold,"-q\t",rc," Print list of supported plugins based off CSV file")
+#     exit()
+# if argc == 2:
+#     print(green, "File exists and is in correct format:", file)
+# else:
+#     options_arg = sys.argv[2]
+#     if options_arg == '-m':
+#         msf_check = 1
+#         print(green, "Starting script with metasploit options enabled ...")
+#     elif options_arg == "-q":
+#         query = 1
+#     else:
+#         print("\n",yellow,bold,"Usage",rc,": nmb.py /path/to/nessus.csv -OptionalArg")
+#         print(bold,"Additional options:", rc)
+#         print("",blue, bold,"-m\t",rc," Run script with metasploit checks enabled", bold, "Note:", rc, "this will be much slower")
+#         print("",blue, bold,"-q\t",rc," Print list of supported plugins based off CSV file")
+#         exit()
+# make_evidence = "evidence"
+# if not os.path.exists(make_evidence):
+#     os.makedirs(make_evidence)
+# cwd = os.getcwd()
+# print(blue,"Evidence will be saved to: " + cwd + "/" + make_evidence)
+# print(blue,"Script started at:", time.ctime())
 #####################################################################
 def custom_verify(plugin_id, script_args, output_file):
 # Open the Nessus .csv file and read it
     ips = []
     ports = []
-    global found
+    global file, make_evidence
     with open(file, 'r', encoding="utf8") as f:
         reader = csv.reader(f)
         # Iterate through each row
@@ -106,14 +143,15 @@ def custom_verify(plugin_id, script_args, output_file):
                 # Append the IP and port to the respective lists
                 ips.append(ip)
                 ports.append(port)
-                # Delete all ips except the first
-                # ips = [ips[0]]
+                # Delete all non unique values
+                ips = list(set(ips))
 
     # Iterate through the ips and ports
     for i in range(len(ips)):
         ip = ips[i]
         port = ports[i]
-        # Pass the ip and port to nmap
+        # Pass the ip and port to command
+        print(blue,f"Currently testing {ip} for {name}")
         scan_output = subprocess.run([f'{script_args} {ip}'], capture_output=True, shell=True)
         with open(output_file, "w") as f:
                 f.write(scan_output.stdout.decode())
@@ -127,7 +165,6 @@ def custom_verify(plugin_id, script_args, output_file):
             print(yellow, "Unable to verify content please review manually -", name)
             break
         else:
-            found = True
             print(green, "Finding:", name, bold,"Verified",rc)
             break
     # Removal of empty lines 
@@ -151,7 +188,7 @@ def nmap_verify(plugin_id, args, output_file):
     # Open the Nessus .csv file and read it
     ips = []
     ports = []
-    global found
+    global file, make_evidence
     with open(file, 'r', encoding="utf8") as f:
         reader = csv.reader(f)
 
@@ -169,13 +206,13 @@ def nmap_verify(plugin_id, args, output_file):
                 ports.append(port)
                 # Delete all ips except the first
                 # ips = [ips[0]]
-                # print(ips)
-
+                ips = list(set(ips))
     # Iterate through the ips and ports
     for i in range(len(ips)):
         ip = ips[i]
         port = ports[i]
         # Pass the ip and port to nmap
+        print(blue,f"Currently testing {ip} for {name}")
         nmap_output = subprocess.run([f'nmap -T4 {args} {port} {ip} '], capture_output=True, shell=True)
         with open(output_file, "w") as f:
                 f.write(nmap_output.stdout.decode())
@@ -187,7 +224,6 @@ def nmap_verify(plugin_id, args, output_file):
                 break
         else:
             print(green, "Finding:", name, bold,"Verified",rc)
-            found = True
             break
     if os.path.isfile(output_file):
         # Removal of empty lines 
@@ -212,14 +248,13 @@ def nmap_verify_sudo(plugin_id, args, output_file):
     # Open the Nessus .csv file and read it
     ips = []
     ports = []
-    global found
+    global file, make_evidence
     with open(file, 'r', encoding="utf8") as f:
         reader = csv.reader(f)
 
         # Iterate through each row
         for row in reader:
             # Check if the plugin ID in column 1 matches the specified value
-            #matching_plugin_id = "153953" ### weak key exchange SSH
             if row[0] in plugin_id:
                 name = row[7]
                 # Extract the IP from column 4 and the port from column 6
@@ -228,15 +263,14 @@ def nmap_verify_sudo(plugin_id, args, output_file):
                 # Append the IP and port to the respective lists
                 ips.append(ip)
                 ports.append(port)
-                # Delete all ips except the first
-                # ips = [ips[0]]
-
-
+                # Delete all non unique ips
+                ips = list(set(ips))
     # Iterate through the ips and ports
     for i in range(len(ips)):
         ip = ips[i]
         port = ports[i]
         # Pass the ip and port to nmap
+        print(blue,f"Currently testing {ip} for {name}")
         nmap_output_sudo = subprocess.run([f'sudo nmap -T4 {args} {ip} '], capture_output=True, shell=True)
         with open(output_file, "w") as f:
                 f.write(nmap_output_sudo.stdout.decode())
@@ -248,11 +282,9 @@ def nmap_verify_sudo(plugin_id, args, output_file):
                 break
         if "No exact OS matches for host" in content:
                 print(yellow, "Error: All IP addresses might be down, please review results manually -", name)
-                found = True
                 break
         else:
             print(green, "Finding:", name, bold,"Verified",rc)
-            found = True
             break
     if os.path.isfile(output_file):
         # Removal of empty lines 
@@ -274,18 +306,15 @@ def nmap_verify_sudo(plugin_id, args, output_file):
 
 
 def msfconsole_verify(plugin_id, module, output_file):
-# Open the Nessus .csv file and read it
     ips = []
     ports = []
+    global file, make_evidence
     with open(file, 'r', encoding="utf8") as f:
         reader = csv.reader(f)
-
         # Iterate through each row
         for row in reader:
             # Check if the plugin ID in column 1 matches the specified value
             if row[0] in plugin_id:
-                global run_msf
-                run_msf = 1
                 name = row[7]
                 # Extract the IP from column 4 and the port from column 6
                 ip = row[4]
@@ -299,25 +328,21 @@ def msfconsole_verify(plugin_id, module, output_file):
     for i in range(len(ips)):
         ip = ips[i]
         port = ports[i]
-        # Pass the ip and port to nmap
-
-# Run Metasploit command
-    if run_msf == 1:
-        cmd = f"sudo msfconsole -x 'use {module}; set RHOST {ip}; set RPORT {port}; run; exit -y' > {output_file}"
-        subprocess.run(cmd, shell=True)
+        # Run Metasploit command
+        msf_output = subprocess.run(f"sudo msfconsole -x 'use {module}; set RHOST {ip}; set RPORT {port}; run; exit -y'", shell=True, capture_output=True)
+        with open(output_file, "w") as f:
+                f.write(msf_output.stdout.decode())
+        with open(output_file, "r") as f:
+                content = f.read()
+        if "failed" in content:
+            if i == len(ips) - 1:
+                print(red, "Error: All IP addresses are down -", name)
+                break
+        if "Auxiliary module execution completed" in content:
+            print(yellow, "Error: Module may have failed, please review results manually -", name)
+            break
         dst_file = os.path.join(make_evidence, os.path.basename(output_file))
         shutil.move(output_file, dst_file)
-
-# Check for a certain string in the output file
-        if os.path.isfile(dst_file):
-            with open(dst_file, 'r') as f:
-                output = f.read()
-                if "Hash found" or "Opened" in output:
-                    print(green, "Exploit", name, bold,"successful!",rc)
-                else:
-                    print(red, "Error: ", name, "Exploit failed. Check the output file for more information.")
-
-        
 ############################################################################################
 
 def get_supported_plugins(file, plugin_ids):
@@ -348,12 +373,12 @@ if query == 1:
     sys.exit()
 
 #############################################################################################
-
+print("Evidence will be saved to: " + cwd + "/" + make_evidence)
+print(blue,"Script started at:", time.ctime())
 
 #############################################################################################
 custom_verify("41028", "snmp-check -v 2c -c public -w", "snmp_check.txt") # snmp public write test and info gather
 custom_verify("57608", "crackmapexec smb --gen-relay-list smb_targets.txt", "smb_targets.txt") # SMB signing not required
-#custom_verify("97861", "sudo ntpd -c monlist", "ntp_mode6.txt") # NTP Mode 6 scanner
 nmap_verify("104743", "--script ssl-enum-ciphers -p", "tls_version.txt") # tls version
 nmap_verify(['51192', '20007', '57582', '15901'], "--script ssl-cert -p", "ssl_cert.txt") # ssl cant be trusted, SSL v2/3, self-signed ssl, ssl cert expiry
 nmap_verify(["70658", "153953", "71049"], "--script ssh2-enum-algos -p", "ssh_ciphers.txt") # SSH cbc ciphers, SSH weak-keyx, SSH MAC algos
@@ -363,6 +388,7 @@ nmap_verify(["58987","166901", "161971", "165545"], "-sC -sV -p", "php_version.t
 nmap_verify(["150280", "153583", "156255", "158900", "161454", "161948", "170113", "153585", "153586"], "-sC -sV -p", "apache_version.txt") # Apache version
 nmap_verify(["152782", "160477", "162420", "148125", "148402", "158974", "144047", "157228", "162721"], "-sC -sV -p", "openssl_version.txt") # Openssl version
 nmap_verify(["72692", "95438", "121119", "133845", "66428", "72691", "74247", "74246", "77475", "83764", "88936", "88936", "94578", "96003", "99367", "100681", "103329", "103329", "103698", "103782", "106975", "118035", "12116", "12117", "12118", "121120", "121121", "136770", "138851", "147163", "148405", "151502"], "-sC -sV -p", "tomcat_version.txt")
+#custom_verify("97861", "sudo ntpd -c monlist", "ntp_mode6.txt") # NTP Mode 6 scanner
 nmap_verify_sudo("33850", "-sC -sV -O", "unix_os_version.txt") # Unsupported unix OS
 nmap_verify_sudo("108797", "-sC -sV -O", "windows_os_version.txt") # Unsupported windows OS
 
