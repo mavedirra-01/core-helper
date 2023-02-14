@@ -301,12 +301,12 @@ def msfconsole_verify(plugin_id, module, output_file):
             if i == len(ips) - 1:
                 print(red, "Error: All IP addresses are down -", name)
                 break
-        if "Auxiliary module execution completed" in content:
+        elif "Auxiliary module execution completed" in content:
             print(yellow, "Error: Module may have failed, please review results manually -", name)
             valid_scan_found = True
+            dst_file = os.path.join(make_evidence, os.path.basename(output_file))
+            shutil.move(output_file, dst_file)
             break
-        dst_file = os.path.join(make_evidence, os.path.basename(output_file))
-        shutil.move(output_file, dst_file)
 ############################################################################################
 
 def get_supported_plugins(file, plugin_ids):
@@ -330,7 +330,7 @@ def get_supported_plugins(file, plugin_ids):
 
 # Call the function and print the list of supported plugins
 if query == 1:
-    supported_plugins = get_supported_plugins(file, ["41028", "97861", "57608", "104743", "150280", "153583", "156255", "158900", "161454", "161948", "170113", "153585", "153586", "51192", "20007", "57582", "15901", "70658", "153953", "71049", "138475", "58987","166901", "161971", "165545", "152782", "160477", "162420", "148125", "148402", "158974", "144047", "157228", "162721", "72692", "95438", "121119", "133845", "66428", "72691", "74247", "74246", "77475", "83764", "88936", "88936", "94578", "96003", "99367", "100681", "103329", "103329", "103698", "103782", "106975", "118035", "12116", "12117", "12118", "121120", "121121", "136770", "138851", "147163", "148405", "151502", "108797", "33850" ])
+    supported_plugins = get_supported_plugins(file, ["41028", "80101", "117615", "72063", "97861", "57608", "104743", "150280", "153583", "156255", "158900", "161454", "161948", "170113", "153585", "153586", "51192", "20007", "57582", "15901", "70658", "153953", "71049", "138475", "58987","166901", "161971", "165545", "152782", "160477", "162420", "148125", "148402", "158974", "144047", "157228", "162721", "72692", "95438", "121119", "133845", "66428", "72691", "74247", "74246", "77475", "83764", "88936", "88936", "94578", "96003", "99367", "100681", "103329", "103329", "103698", "103782", "106975", "118035", "12116", "12117", "12118", "121120", "121121", "136770", "138851", "147163", "148405", "151502", "108797", "33850" ])
     print("Supported plugins:")
     for plugin in supported_plugins:
         print("- {}".format(plugin))
