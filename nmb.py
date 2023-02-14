@@ -111,13 +111,10 @@ def custom_verify(plugin_id, script_args, output_file):
                 f.write(scan_output.stdout.decode())
         with open(output_file, "r") as f:
             content = f.read()
-        if "SNMP request timeout" in content: ## Optimize this a bit more - difficult due to outputs not being the same and commands might fail but still print lines
+        if "SNMP request timeout" in content or "request timed out" in content: ## Optimize this a bit more - difficult due to outputs not being the same and commands might fail but still print lines
             if i == len(ips) - 1:
                 print(red, "Error: All IP addresses are down -", name)
                 break
-        elif not content:
-            print(yellow, "Unable to verify content please review manually -", name)
-            break
         else:
             print(green, "Finding:", name, bold,"Verified",rc)
             # Set the flag variable to indicate that a valid scan has been found
@@ -175,8 +172,12 @@ def nmap_verify(plugin_id, args, output_file):
             content = f.read()
         if "Host seems down" in content:
             if i == len(ips) - 1:
-                print(red, "Error: All IP addresses might be down, please review results manually -", name)
+                print(red, "Error: All IP addresses are down -", name)
                 break
+        elif "filtered" in content or "closed" in content:
+            print(yellow,"Host may be down, unable to verify -", name)
+            valid_scan_found = True
+            break
         else:
             print(green, "Finding:", name, bold,"Verified",rc)
             # Set the flag variable to indicate that a valid scan has been found
@@ -208,7 +209,6 @@ def nmap_verify_sudo(plugin_id, args, output_file):
     global file, make_evidence
     with open(file, 'r', encoding="utf8") as f:
         reader = csv.reader(f)
-
         # Iterate through each row
         for row in reader:
             # Check if the plugin ID in column 1 matches the specified value
