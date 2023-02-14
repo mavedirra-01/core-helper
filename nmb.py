@@ -222,8 +222,11 @@ def nmap_verify_sudo(plugin_id, args, output_file):
                 ports.append(port)
                 # Delete all non unique ips
                 ips = list(set(ips))
+    valid_scan_found = False
     # Iterate through the ips and ports
     for i in range(len(ips)):
+        if valid_scan_found:
+            break
         ip = ips[i]
         port = ports[i]
         # Pass the ip and port to nmap
@@ -237,11 +240,13 @@ def nmap_verify_sudo(plugin_id, args, output_file):
             if i == len(ips) - 1:
                 print(red, "Error: All IP addresses are down -", name)
                 break
-        if "No exact OS matches for host" in content:
+        elif "No exact OS matches for host" in content:
                 print(yellow, "Error: All IP addresses might be down, please review results manually -", name)
+                valid_scan_found = True
                 break
         else:
             print(green, "Finding:", name, bold,"Verified",rc)
+            valid_scan_found = True
             break
     if os.path.isfile(output_file):
         # Removal of empty lines 
@@ -279,8 +284,11 @@ def msfconsole_verify(plugin_id, module, output_file):
                 ports.append(port)
                 # Delete all ips except the first
                 ips = [ips[0]]
+    valid_scan_found = False
     # Iterate through the ips and ports
     for i in range(len(ips)):
+        if valid_scan_found:
+            break
         ip = ips[i]
         port = ports[i]
         # Run Metasploit command
@@ -295,6 +303,7 @@ def msfconsole_verify(plugin_id, module, output_file):
                 break
         if "Auxiliary module execution completed" in content:
             print(yellow, "Error: Module may have failed, please review results manually -", name)
+            valid_scan_found = True
             break
         dst_file = os.path.join(make_evidence, os.path.basename(output_file))
         shutil.move(output_file, dst_file)
