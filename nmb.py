@@ -111,7 +111,7 @@ def custom_verify(plugin_id, script_args, output_file):
                 f.write(scan_output.stdout.decode())
         with open(output_file, "r") as f:
             content = f.read()
-        if "SNMP request timeout" or "Request timed out" in content: ## Optimize this a bit more - difficult due to outputs not being the same and commands might fail but still print lines
+        if "SNMP request timeout" in content: ## Optimize this a bit more - difficult due to outputs not being the same and commands might fail but still print lines
             if i == len(ips) - 1:
                 print(red, "Error: All IP addresses are down -", name)
                 break
@@ -173,9 +173,10 @@ def nmap_verify(plugin_id, args, output_file):
                 f.write(nmap_output.stdout.decode())
         with open(output_file, "r") as f:
             content = f.read()
-        if "Host seems down" or "closed" or "filtered" in content:
+        if "filtered" in content:
             if i == len(ips) - 1:
                 print(red, "Error: All IP addresses might be down, please review results manually -", name)
+                valid_scan_found = True
                 break
         else:
             print(green, "Finding:", name, bold,"Verified",rc)
