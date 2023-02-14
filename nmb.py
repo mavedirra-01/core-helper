@@ -76,7 +76,7 @@ if __name__ == "__main__":
     main()
 #####################################################################
 def custom_verify(plugin_id, script_args, output_file):
-# Open the Nessus .csv file and read it
+    # Open the Nessus .csv file and read it
     ips = []
     ports = []
     global file, make_evidence
@@ -95,8 +95,13 @@ def custom_verify(plugin_id, script_args, output_file):
                 ports.append(port)
                 # Delete all non unique values
                 ips = list(set(ips))
+    # Set a flag variable to indicate if a valid scan has been found
+    valid_scan_found = False
     # Iterate through the ips and ports
     for i in range(len(ips)):
+        # Check if a valid scan has already been found
+        if valid_scan_found:
+            break
         ip = ips[i]
         port = ports[i]
         # Pass the ip and port to command
@@ -115,6 +120,8 @@ def custom_verify(plugin_id, script_args, output_file):
             break
         else:
             print(green, "Finding:", name, bold,"Verified",rc)
+            # Set the flag variable to indicate that a valid scan has been found
+            valid_scan_found = True
             break
     # Removal of empty lines 
     if os.path.isfile(output_file):
@@ -152,8 +159,11 @@ def nmap_verify(plugin_id, args, output_file):
                 ips.append(ip)
                 ports.append(port)
                 ips = list(set(ips))
+    valid_scan_found = False
     # Iterate through the ips and ports
     for i in range(len(ips)):
+        if valid_scan_found:
+            break
         ip = ips[i]
         port = ports[i]
         # Pass the ip and port to nmap
@@ -169,6 +179,8 @@ def nmap_verify(plugin_id, args, output_file):
                 break
         else:
             print(green, "Finding:", name, bold,"Verified",rc)
+            # Set the flag variable to indicate that a valid scan has been found
+            valid_scan_found = True
             break
     if os.path.isfile(output_file):
         # Removal of empty lines 
