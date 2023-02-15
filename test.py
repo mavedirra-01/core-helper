@@ -1,6 +1,8 @@
 import requests
-
+from urllib3.exceptions import InsecureRequestWarning
 url = "https://localhost:8834"
+
+requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
 # Set Nessus credentials
 username = "bulletproof"
@@ -10,24 +12,24 @@ targets_file = "up.txt"
 
 try:
     # Authenticate with Nessus API and get session token
-    response = requests.post(url + "/session", json={"username": username, "password": password})
+    response = requests.post(url + "/session", json={"username": username, "password": password}, verify=False)
     response.raise_for_status()
     session_token = response.headers["x-cookie"]
 
     # Start a scan with the specified policy and targets
-    response = requests.post(url + "/scans", json={"uuid": policy_id, "settings": {"name": "Scan Name", "text_targets": open(targets_file).read()}})
+    response = requests.post(url + "/scans", json={"uuid": policy_id, "settings": {"name": "Scan Name", "text_targets": open(targets_file).read()}}, verify=False)
     response.raise_for_status()
     scan_id = response.json()["scan"]["id"]
 
     # Wait for the scan to finish
     while True:
-        response = requests.get(url + f"/scans/{scan_id}")
+        response = requests.get(url + f"/scans/{scan_id}", verify=False)
         response.raise_for_status()
         if response.json()["info"]["status"] == "completed":
             break
 
     # Export the scan results in CSV format
-    response = requests.get(url + f"/scans/{scan_id}/export", headers={"X-Cookie": session_token}, params={"format": "csv"})
+    response = requests.get(url + f"/scans/{scan_id}/export", headers={"X-Cookie": session_token}, params={"format": "csv"}, verify=False)
     response.raise_for_status()
     with open("scan_results.csv", "wb") as f:
         f.write(response.content)
