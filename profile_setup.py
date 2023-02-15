@@ -24,7 +24,8 @@ def upload_file_to_host(hostname, username, password, local_path=None, remote_pa
         stdin, stdout, stderr = ssh.exec_command('while true; do sleep 600; done')
     except Exception as e:
         print(f'Error uploading file to {hostname}: {e}')
-    ssh.forward_local_port(8834, '127.0.0.1', 8834)
+    transport = ssh.get_transport()
+    transport.local_bind(('', 8834), ('localhost', 8834))
     print(f'Successfully uploaded file to {hostname}')
     print(f'Connection to {hostname} is now open and forwarding local port 8834 to the remote host')
 
