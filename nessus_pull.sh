@@ -46,6 +46,7 @@ else
   echo "Found policy"
 fi
 
+echo "Starting scan ..."
 scan_id=$(curl -s -k -X POST -H "X-Cookie: token=$token" "Content-Type: application/json" -d "{\"uuid\":\"\",\"settings\":{\"name\":\"Scan Name\",\"description\":\"Scan Description\",\"text_targets\":\"$(cat $TARGETS_FILE)\",\"policy_id\":\"$(curl -s -k -H "X-Cookie: token=$token" -X GET $NESSUS_URL/policies | jq -r ".policies[] | select(.name == \"$(basename $POLICY_FILE)\") | .id")\",\"scanner_id\":\"1\",\"text_targets_type\":\"default\"},\"uuid\":\"\"}" $NESSUS_URL/scans | jq -r '.scan.id')
 
 # # get the most recent completed scan for the policy
@@ -60,7 +61,7 @@ fi
 # export the CSV file of the scan results
 # response=$(curl -s -k -H "X-Cookie: token=$token" -X POST -d "format=csv&all_columns=1" "$NESSUS_URL/scans/$scan_id/export")
 # file_id=$(echo "$response" | python -c "import sys, json; data = json.load(sys.stdin); print(data['file'] if 'file' in data else '')")
-EXPORT_ID=$(curl -s -k -H "X-Cookie: token=$token" -X POST -d "{\"format\":\"csv\",\"history_id\":\"0\",\"scanner_id\":\"1\",\"scan_id\":\"$SCAN_ID\",\"chapter\":\"vuln_hosts_summary\",\"report\":\"vuln_scan\",\"description\":\"\",\"filters\":[],\"targets\":\"\",\"timezone\":\"UTC\"}" $NESSUS_URL/reports | jq -r '.file')
+# EXPORT_ID=$(curl -s -k -H "X-Cookie: token=$token" -X POST -d "{\"format\":\"csv\",\"history_id\":\"0\",\"scanner_id\":\"1\",\"scan_id\":\"$SCAN_ID\",\"chapter\":\"vuln_hosts_summary\",\"report\":\"vuln_scan\",\"description\":\"\",\"filters\":[],\"targets\":\"\",\"timezone\":\"UTC\"}" $NESSUS_URL/reports | jq -r '.file')
 # if [ -z "$file_id" ]; then
 #   echo "Error: export failed"
 #   exit 1
