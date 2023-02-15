@@ -25,6 +25,16 @@ import time
 import xml.etree.ElementTree as XML
 requests.packages.urllib3.disable_warnings()
 log.basicConfig(level=log.DEBUG)
+class LogContext:
+    def __init__(self, message):
+        self.message = message
+
+    def __enter__(self):
+        log.info(self.message)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        pass
+
 
 class Drone():
 	def __init__(self, hostname, username, password):
@@ -189,8 +199,8 @@ class Nessus:
 
 	# Auth handlers
 	def get_auth(self, verbose=True):
-		if not verbose: log.log_level = 'error'
-		with log.info("Retrieving api tokens") as p:
+		if not verbose: log.error()
+		with LogContext("Retrieving api tokens") as p:
 			try:
 				self.token_keys = self.get_tokens()
 				self.token_auth = {
@@ -233,7 +243,7 @@ class Nessus:
 
 	# Engine
 	def exclude_targets(self):
-		with log.info("Adding targets to reject list") as p:
+		with LogContext("Adding targets to reject list") as p:
 			try:
 				# Connect to the SSH server
 				p.status("Connecting to the ssh server")
@@ -267,7 +277,7 @@ class Nessus:
 				exit()
 
 	def update_settings(self):
-		with log.info("Updating settings") as p:
+		with LogContext("Updating settings") as p:
 			# bulletproof standard settings as per policy
 			settings = {
 				"scan_vulnerability_groups": "no",
@@ -295,7 +305,7 @@ class Nessus:
 				exit()
 
 	def import_policies(self):
-		with log.info("Importing policies") as p:
+		with LogContext("Importing policies") as p:
 			try: 
 				# check if policy file already exists:
 				policy_name = self.policy_file_name.rsplit(".", 1)[0]
@@ -336,7 +346,7 @@ class Nessus:
 				exit()
 
 	def create_scan(self, launch):
-		with log.info("Creating new scan") as p:
+		with LogContext("Creating new scan") as p:
 			# check if scan name already exists first:
 			if self.get_scan_info() is not None:
 				p.failure("Scan name already exists")
@@ -394,7 +404,7 @@ class Nessus:
 			exit()
 
 	def scan_action(self, action):
-		with log.info(f"Sending {action} request to \"{self.project_name}\"") as p:
+		with LogContext(f"Sending {action} request to \"{self.project_name}\"") as p:
 			try:
 				scan_id = self.get_scan_info()["id"]
 				response = requests.post(self.url + "/scans/" + str(scan_id) + "/" + action, headers=self.token_auth, verify=False)
@@ -407,7 +417,7 @@ class Nessus:
 	def monitor_scan(self):
 		status = self.get_scan_info()["status"]
 		time_elapsed = 0
-		with log.info(f"Scan status") as p:
+		with LogContext(f"Scan status") as p:
 			while status == "running":
 				p.status(status)
 				status = self.get_scan_info()["status"]			
@@ -484,7 +494,7 @@ class Nessus:
 			}
 
 			for k,v in formats.items():
-				with log.info(f"Exporting {k} file") as p:
+				with LogContext(f"Exporting {k} file") as p:
 					# get scan token
 					data = v
 					response = requests.post(self.url + "/scans/" + str(scan_id) + "/export", headers=self.token_auth, json=data, verify=False)
@@ -512,7 +522,7 @@ class Nessus:
 			exit()
 
 	def analyze_results(self, scan_file):
-		with log.info("Analyzing results") as p:
+		with LogContext("Analyzing results") as p:
 			try:
 				analyze = Analyzer(scan_file, self.output_folder)
 				drone = Drone(self.drone, self.username, self.password)
