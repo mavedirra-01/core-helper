@@ -2,15 +2,15 @@
 
 function cleanup {
     # log out
-    curl -s -k -X DELETE -H "X-Cookie: token=$token" "$host/session"
+    curl -s -k -X DELETE -H "X-Cookie: token=$token" "$NESSUS_URL/session"
     echo "Logged out"
 }
 
 # Trap errors and exit gracefully
 trap cleanup EXIT INT TERM
 
-# set your Nessus hostname
-host="https://localhost:8834"
+# set your Nessus NESSUS_URLname
+NESSUS_URL="https://localNESSUS_URL:8834"
 
 # set the name of the policy to export
 POLICY_FILE="Custom_Nessus_Policy-Pn_pAll_AllSSLTLS-Web-NoLocalCheck-NoDOS" ## FIXME
@@ -25,7 +25,7 @@ read -sp "Nessus Password: " password
 echo
 
 # authenticate and get the session token
-response=$(curl -s -k -H "Content-Type: application/json" -X POST -d "{\"username\":\"$username\",\"password\":\"$password\"}" "$host/session")
+response=$(curl -s -k -H "Content-Type: application/json" -X POST -d "{\"username\":\"$username\",\"password\":\"$password\"}" "$NESSUS_URL/session")
 token=$(echo "$response" | python -c "import sys, json; data = json.load(sys.stdin); print(data['token'] if 'token' in data else '')")
 
 if [ -z "$token" ]; then
@@ -36,7 +36,7 @@ else
 fi
 
 # get the policy ID for the specified policy name
-response=$(curl -s -k -H "X-Cookie: token=$token" "$host/policies")
+response=$(curl -s -k -H "X-Cookie: token=$token" "$NESSUS_URL/policies")
 policy_id=$(echo "$response" | python -c "import sys, json; data = json.load(sys.stdin); policies = [p['id'] for p in data['policies'] if p['name'] == '$POLICY_FILE']; print(policies[0] if policies else '')")
 
 if [ -z "$policy_id" ]; then
@@ -49,7 +49,7 @@ fi
 scan_id=$(curl -k -X POST -H "X-Cookie: token=$token" "Content-Type: application/json" -d "{\"uuid\":\"\",\"settings\":{\"name\":\"Scan Name\",\"description\":\"Scan Description\",\"text_targets\":\"$(cat $TARGETS_FILE)\",\"policy_id\":\"$(curl -k -H "X-Cookie: token=$token" -X GET $NESSUS_URL/policies | jq -r ".policies[] | select(.name == \"$(basename $POLICY_FILE)\") | .id")\",\"scanner_id\":\"1\",\"text_targets_type\":\"default\"},\"uuid\":\"\"}" $NESSUS_URL/scans | jq -r '.scan.id')
 
 # # get the most recent completed scan for the policy
-# response=$(curl -s -k -H "X-Cookie: token=$token" "$host/scans?policy_id=$policy_id")
+# response=$(curl -s -k -H "X-Cookie: token=$token" "$NESSUS_URL/scans?policy_id=$policy_id")
 # scan_id=$(echo "$response" | python -c "import sys, json; data = json.load(sys.stdin); scans = [s['id'] for s in data['scans'] if s['status'] == 'completed']; print(scans[0] if scans else '')")
 
 if [ -z "$scan_id" ]; then
@@ -58,7 +58,7 @@ if [ -z "$scan_id" ]; then
 fi
 
 # export the CSV file of the scan results
-response=$(curl -s -k -H "X-Cookie: token=$token" -X POST -d "format=csv&all_columns=1" "$host/scans/$scan_id/export")
+response=$(curl -s -k -H "X-Cookie: token=$token" -X POST -d "format=csv&all_columns=1" "$NESSUS_URL/scans/$scan_id/export")
 file_id=$(echo "$response" | python -c "import sys, json; data = json.load(sys.stdin); print(data['file'] if 'file' in data else '')")
 
 if [ -z "$file_id" ]; then
@@ -71,13 +71,13 @@ fi
 # download the exported CSV file
 status="running"
 while [ "$status" == "running" ]; do
-  response=$(curl -s -k -H "X-Cookie: token=$token" "$host/scans/$scan_id/export/$file_id/status")
+  response=$(curl -s -k -H "X-Cookie: token=$token" "$NESSUS_URL/scans/$scan_id/export/$file_id/status")
   status=$(echo "$response" | python -c "import sys, json; data = json.load(sys.stdin); print(data['status'] if 'status' in data else '')")
   sleep 5
 done
 
 # download the export
-curl -s -k -o "$csv_file" -H "X-Cookie: token=$token" "$host/scans/$scan_id/export/$file_id/download"
+curl -s -k -o "$csv_file" -H "X-Cookie: token=$token" "$NESSUS_URL/scans/$scan_id/export/$file_id/download"
 
 
 echo "File saved to: " $PWD/$csv_file
