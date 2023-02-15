@@ -1,3 +1,15 @@
+#!/usr/bin/env python3
+# Deployer - A nessus utility to deploy scans and analyses
+# author: Joey Melo
+# version: v1.0.0
+
+## NEW:
+
+## TO DO:
+# -o options not working properly. Debug.
+# Check regex on tokens["api_token"] with different drones. May have to tweak it to properly get the token.
+
+
 import argparse
 import ipaddress
 import getpass
@@ -13,6 +25,131 @@ import time
 import xml.etree.ElementTree as XML
 requests.packages.urllib3.disable_warnings()
 log.basicConfig(level=log.DEBUG)
+
+class Drone():
+	def __init__(self, hostname, username, password):
+		try:
+			self.ssh = paramiko.SSHClient()
+			self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+			self.ssh.connect(hostname=hostname, username=username, password=password)
+			self.ssh.exec_command('export TERM=xterm')
+
+		except Exception as e:
+			log.error(e.args[0])
+			exit()
+
+	def upload(self, local_file):
+		remote_file = "/tmp/" + local_file
+		try:
+			# upload
+			sftp = self.ssh.open_sftp()
+			sftp.put(local_file, remote_file)
+			sftp.close()
+			return remote_file
+
+		except Exception as e:
+			log.error(e)
+			self.close()
+			exit()
+
+	def execute(self, cmd):
+		try:
+			stdin, stdout, stderr = self.ssh.exec_command(cmd)
+			err = stderr.read().decode()
+			if err != "" and "TERM" not in err:
+				log.error(err)
+				raise Exception
+
+			return stdout.read().decode()
+
+		except:
+			self.close()
+			exit()
+
+	def close(self):
+		self.ssh.close()
+
+class Analyzer:
+	def __init__(self, scan_file, output_folder):
+		self.tree = XML.parse(scan_file)
+		self.root = self.tree.getroot()
+		self.output_folder = output_folder
+
+	def vulnerabilities(self):
+		findings = {}
+		hosts = self.root.findall(".//ReportHost")
+
+		for host in hosts:
+			ip = host.get("name")
+			vulnerabilities = host.findall(".//ReportItem")
+
+			for vulnerability in vulnerabilities:
+				try:
+					# ignore info findings
+					if vulnerability.get("severity") == "0": continue
+
+					# fetch data
+					name = vulnerability.find(".//plugin_name").text
+					exploitable = vulnerability.find(".//exploit_available").text
+					plugin_id = vulnerability.get("pluginID")
+					port = vulnerability.get("port")
+					cves = vulnerability.findall(".//cve")
+					cve_list = []
+					for cve in cves:
+						cve_list.append(cve.text)
+
+					# only care about findings with publicly available exploits
+					if exploitable == "true":
+						if plugin_id in findings:
+							findings[plugin_id]["hosts"].append(ip + ":" + port)
+
+						else:
+							findings[plugin_id] = {
+								"name": name,
+								"cves": cve_list,
+								"hosts": [ip + ":" + port]
+							}
+
+				except Exception as e:
+					continue
+
+		file_path = os.path.join(self.output_folder / "exploitable-findings.txt")
+		with open(file_path, "a") as f:
+			f.write("Findings identified in Nessus file with publicly available exploits:\n\n")
+			for k,v in findings.items():
+				f.write(f'Finding: {v["name"]}\n')
+				f.write(f'Plugin ID: {k}\n')
+				f.write(f'CVEs: {v["cves"]}\n')
+				f.write(f'Hosts: {v["hosts"]}\n\n')
+
+			f.close()
+
+	def web_directories(self):
+		hosts = self.root.findall(".//ReportHost")
+		web_directories = {}
+		for host in hosts:
+			for item in host.findall(".//ReportItem"):
+				plugin_id = item.get("pluginID")
+				if plugin_id == "11032":
+					ip = host.get("name")
+					plugin_output = item.find(".//plugin_output").text
+					try:
+						clean_output = re.search(r"(/.*)", plugin_output)[1]
+					except:
+						continue
+					port = item.get("port")
+					hostname = ip + ":" + port
+					clean_output = clean_output.replace("//", "") # FIX THIS
+					web_directories[hostname] = clean_output.split(", ")
+
+		file_path = os.path.join(self.output_folder / "web-directories.json")
+		with open(file_path, "w") as f:
+			json.dump(web_directories, f, indent=4)
+
+	def run_eyewitness(self):
+		# we don't interact with the drone in this class
+		pass
+
 class Nessus:
 	def __init__(self, drone, username, password, mode, project_name, policy_file, targets_file, scan_file, exclude_file, output_folder):
 		self.output_folder = output_folder
@@ -52,7 +189,7 @@ class Nessus:
 
 	# Auth handlers
 	def get_auth(self, verbose=True):
-		if not verbose: log.error()
+		if not verbose: log.log_level = 'error'
 		with log.info("Retrieving api tokens") as p:
 			try:
 				self.token_keys = self.get_tokens()
@@ -95,6 +232,40 @@ class Nessus:
 		return keys
 
 	# Engine
+	def exclude_targets(self):
+		with log.info("Adding targets to reject list") as p:
+			try:
+				# Connect to the SSH server
+				p.status("Connecting to the ssh server")
+				drone = Drone(self.drone, self.username, self.password)
+
+				# Fetch drone IP
+				p.status("Getting drone IP")
+				cmd = 'ip a s eth0 | grep -o "inet .* brd" | grep -o "[0-9]*\\.[0-9]*\\.[0-9]*\\.[0-9]*"'
+				drone_ip = drone.execute(cmd).split("\n")[0]
+
+				# Add drone IP to nessus rules
+				p.status(f"Adding drone IP {drone_ip} to reject list")
+				cmd = f"echo 'reject {drone_ip}' | sudo tee -a /opt/nessus/etc/nessus/nessusd.rules"
+				drone.execute(cmd)
+
+				# Add targets provided from -e to nessus rules
+				try:
+					p.status(f"Adding exclude targets from to reject list")
+					for exclude_target in self.exclude_file:
+						exclude_target = exclude_target.rstrip()
+						cmd = f"echo 'reject {exclude_target}' | sudo tee -a /opt/nessus/etc/nessus/nessusd.rules"
+						drone.execute(cmd)
+				except:
+					pass
+
+				drone.close()
+				p.success(f"Exclusion targets added to reject list on /opt/nessus/etc/nessus/nessusd.rules")
+
+			except Exception as e:
+				p.failure(e.args[0])
+				exit()
+
 	def update_settings(self):
 		with log.info("Updating settings") as p:
 			# bulletproof standard settings as per policy
@@ -121,6 +292,47 @@ class Nessus:
 		
 			except Exception as e:		
 				p.failure(e.args[0])
+				exit()
+
+	def import_policies(self):
+		with log.info("Importing policies") as p:
+			try: 
+				# check if policy file already exists:
+				policy_name = self.policy_file_name.rsplit(".", 1)[0]
+				if "\\" in policy_name:
+					policy_name = policy_name.split("\\")[-1]
+				elif "/" in policy_name:
+					policy_name = policy_name.split("/")[-1]
+				response = requests.get(self.url + "/policies", headers=self.api_auth, verify=False)
+				if policy_name in response.text:
+					p.failure("Policy file already exists, skipping import")
+					return
+			
+			except Exception as e:
+				log.error()
+				exit()
+
+			try:
+				# first, upload the policies file to nessus
+				file = {
+					"Filedata": (self.policy_file_name, self.policy_file)
+				}
+				response = requests.post(self.url + "/file/upload", headers=self.api_auth, files=file, verify=False)
+				
+				# then, retrieve the file and post it to policies
+				fileuploaded = json.loads(response.text)["fileuploaded"]
+				data = {
+					"file": fileuploaded
+				}
+				response = requests.post(self.url + "/policies/import", headers=self.api_auth, data=data, verify=False)
+				if response.status_code == 200:
+					p.success()
+				
+				else:
+					raise Exception()
+
+			except:
+				p.failure()
 				exit()
 
 	def create_scan(self, launch):
@@ -299,10 +511,61 @@ class Nessus:
 			p.failure(e.args[0])
 			exit()
 
+	def analyze_results(self, scan_file):
+		with log.info("Analyzing results") as p:
+			try:
+				analyze = Analyzer(scan_file, self.output_folder)
+				drone = Drone(self.drone, self.username, self.password)
+
+				p.status(f"Parsing exploitable vulnerabilities")
+				analyze.vulnerabilities()
+				p.status(f"Parsing web directories found")
+				analyze.web_directories()
+				p.status(f"Running eyewitness (results in /tmp/eyewitness on drone)")
+				remote_file = drone.upload(scan_file)
+				drone.execute(f"eyewitness -x {remote_file} -d /tmp/eyewitness --no-prompt")
+				drone.close()
+
+				p.success()
+
+			except Exception as e:
+				log.error(e.args[0])
+				exit()
+
 	# Mode handlers
-	def trigger(self):
-		self.export_scan(True)
+	def deploy(self):
+		self.exclude_targets()
+		self.update_settings()
+		self.import_policies()
 		self.create_scan(True)
+		self.monitor_scan()
+		scan_file = self.export_scan()
+		self.analyze_results(scan_file)
+
+	def trigger(self):
+		self.exclude_targets()
+		self.update_settings()
+		self.import_policies()
+		self.create_scan(False)
+
+	def launch(self):
+		self.scan_action("launch")
+		self.monitor_scan()
+		scan_file = self.export_scan()
+		self.analyze_results(scan_file)
+
+	def pause(self):
+		self.scan_action("pause")
+
+	def resume(self):
+		self.scan_action("resume")
+		self.monitor_scan()
+		scan_file = self.export_scan()
+		self.analyze_results(scan_file)
+
+	def export(self):
+		scan_file = self.export_scan()
+		self.analyze_results(scan_file)
 
 def get_creds():
 	username = input("username: ").rstrip()
@@ -348,17 +611,17 @@ if __name__ == "__main__":
 		username, password = get_creds()
 
 	else:
-		# if args.drone is None or args.client is None:
-		# 	log.error("You must provide the drone name (-d) and the client name (-c)")
-		# 	exit()
-		# if args.mode == "deploy" or args.mode == "trigger":
-		# 	if not args.policy or not args.targets:
-		# 		log.error("You must provide a policy file (-p) and a targets file (-t) for this mode")
-		# 		exit()
-		# # Check drone name/ip and create url (for nessus) 
-		# if "http" in args.drone:
-		# 	log.error("You must provide only the drone name/dns, or IP. Do not use http link")
-		# 	exit()
+		if args.drone is None or args.client is None:
+			log.error("You must provide the drone name (-d) and the client name (-c)")
+			exit()
+		if args.mode == "deploy" or args.mode == "trigger":
+			if not args.policy or not args.targets:
+				log.error("You must provide a policy file (-p) and a targets file (-t) for this mode")
+				exit()
+		# Check drone name/ip and create url (for nessus) 
+		if "http" in args.drone:
+			log.error("You must provide only the drone name/dns, or IP. Do not use http link")
+			exit()
 		username, password = get_creds()
 
 	# Initialize nessus
@@ -379,4 +642,30 @@ if __name__ == "__main__":
 	if args.mode == "deploy":
 		log.info("Deploying nessus")
 		nessus.deploy()
-    
+
+	elif args.mode == "trigger":
+		nessus.trigger()
+		
+	elif args.mode == "launch":
+		log.info("Launching scan")
+		nessus.launch()
+
+	elif args.mode == "pause":
+		log.info("Pausing scan")
+		nessus.pause()
+
+	elif args.mode == "resume":
+		log.info("Resuming scan")
+		nessus.resume()
+
+	elif args.mode == "monitor":
+		log.info("Monitoring scan")
+		nessus.monitor_scan()
+
+	elif args.mode == "export":
+		log.info("Exporting scan results")
+		nessus.export()
+
+	elif args.mode == "analyze":
+		log.info("Analyzing scan results")
+		nessus.analyze_results()		
