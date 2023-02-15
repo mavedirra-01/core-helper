@@ -10,7 +10,7 @@ function cleanup {
 trap cleanup EXIT INT TERM
 
 # set your Nessus NESSUS_URLname
-NESSUS_URL="https://localNESSUS_URL:8834"
+NESSUS_URL="https://localhost:8834"
 
 # set the name of the policy to export
 POLICY_FILE="Custom_Nessus_Policy-Pn_pAll_AllSSLTLS-Web-NoLocalCheck-NoDOS" ## FIXME
