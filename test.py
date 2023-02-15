@@ -14,7 +14,7 @@ try:
     # Authenticate with Nessus API and get session token
     response = requests.post(url + "/session", json={"username": username, "password": password}, verify=False)
     response.raise_for_status()
-    session_token = response.headers["x-cookie"]
+    session_token = response.headers["X-Cookie"]
 
     # Start a scan with the specified policy and targets
     response = requests.post(url + "/scans", json={"uuid": policy_id, "settings": {"name": "Scan Name", "text_targets": open(targets_file).read()}}, verify=False)
