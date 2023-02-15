@@ -43,6 +43,6 @@ if __name__ == '__main__':
     if args.upload and (not args.local_path or not args.remote_path):
         print('Error: Both local and remote paths are required to upload a file')
     elif args.upload:
-        upload_file_to_host(hostname, args.username, args.password, args.local_path, args.remote_path)
+        upload_file_to_host(hostname, username, password, args.local_path, args.remote_path)
     else:
         print(f'Connected to {hostname} with username {args.username} and password {args.password}')
