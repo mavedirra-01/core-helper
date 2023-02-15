@@ -1,6 +1,13 @@
 #!/bin/bash
-read -p "Nessus Username: " username
-read -sp "Nessus Password: " password
+
+function cleanup {
+    # log out
+    curl -s -k -X DELETE -H "X-Cookie: token=$token" "$host/session"
+    echo "Logged out"
+}
+
+# Trap errors and exit gracefully
+trap cleanup EXIT INT TERM
 
 # set your Nessus hostname
 host="https://localhost:8834"
@@ -10,6 +17,11 @@ policy_name="Custom_Nessus_Policy-Pn_pAll_AllSSLTLS-Web-NoLocalCheck-NoDOS" ## F
 
 # set the name of the CSV file to download
 csv_file="nessus_scan_results.csv"
+
+# Get creds
+read -p "Nessus Username: " username
+read -sp "Nessus Password: " password
+echo
 
 # authenticate and get the session token
 response=$(curl -s -k -H "Content-Type: application/json" -X POST -d "{\"username\":\"$username\",\"password\":\"$password\"}" "$host/session")
@@ -33,12 +45,14 @@ else
   echo "Found policy"
 fi
 
-# get the most recent completed scan for the policy
-response=$(curl -s -k -H "X-Cookie: token=$token" "$host/scans?policy_id=$policy_id")
-scan_id=$(echo "$response" | python -c "import sys, json; data = json.load(sys.stdin); scans = [s['id'] for s in data['scans'] if s['status'] == 'completed']; print(scans[0] if scans else '')")
+scan_id=$(curl -k -X POST -H "X-Cookie: token=$token" "Content-Type: application/json" -d "{\"uuid\":\"\",\"settings\":{\"name\":\"Scan Name\",\"description\":\"Scan Description\",\"text_targets\":\"$(cat $TARGETS_FILE)\",\"policy_id\":\"$(curl -k -H "X-Cookie: token=$token" -X GET $NESSUS_URL/policies | jq -r ".policies[] | select(.name == \"$(basename $POLICY_FILE)\") | .id")\",\"scanner_id\":\"1\",\"text_targets_type\":\"default\"},\"uuid\":\"\"}" $NESSUS_URL/scans | jq -r '.scan.id')
+
+# # get the most recent completed scan for the policy
+# response=$(curl -s -k -H "X-Cookie: token=$token" "$host/scans?policy_id=$policy_id")
+# scan_id=$(echo "$response" | python -c "import sys, json; data = json.load(sys.stdin); scans = [s['id'] for s in data['scans'] if s['status'] == 'completed']; print(scans[0] if scans else '')")
 
 if [ -z "$scan_id" ]; then
-  echo "Error: no completed scans found for policy"
+  echo "Error ... "
   exit 1
 fi
 
@@ -64,7 +78,5 @@ done
 # download the export
 curl -s -k -o "$csv_file" -H "X-Cookie: token=$token" "$host/scans/$scan_id/export/$file_id/download"
 
-# log out
-curl -s -k -X DELETE -H "X-Cookie: token=$token" "$host/session"
 
 echo "File saved to: " $PWD/$csv_file
