@@ -31,7 +31,6 @@ def upload_file_to_host(hostname, username, password, local_path=None, remote_pa
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Upload a file to a remote host via SCP')
     parser.add_argument('hostname', type=str, help='Short name of the target machine. EX: antman')
-    parser.add_argument('--password', type=str, default=None, help='Password for the SSH connection')
     parser.add_argument('--local-path', type=str, default=None, help='Path to the local file to upload')
     parser.add_argument('--remote-path', type=str, default=None, help='Path to the remote file on the target machine')
     parser.add_argument('--upload', action='store_true', help='Upload the file to the remote machine')
