@@ -1,5 +1,5 @@
 import paramiko
-import os
+import sys
 import argparse
 import socket
 import scp
@@ -30,7 +30,16 @@ def upload_file_to_host(hostname, username, password, local_path=None, remote_pa
     channel = transport.open_channel('direct-tcpip', ('localhost', remote_port), ('localhost', local_port))
     print(f'Successfully uploaded file to {hostname}')
     print(f'Connection to {hostname} is now open and forwarding local port 8834 to the remote host')
-
+    try:
+        while True:
+            command = input('$ ')
+            if command.strip() == 'exit':
+                break
+            channel.send(command + '\n')
+            output = channel.recv(1024).decode('utf-8')
+            sys.stdout.write(output)
+    except KeyboardInterrupt:
+        pass
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Upload a file to a remote host via SCP')
     parser.add_argument('hostname', type=str, help='Short name of the target machine. EX: antman')
