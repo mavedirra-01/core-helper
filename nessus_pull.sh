@@ -13,7 +13,8 @@ trap cleanup EXIT INT TERM
 host="https://localhost:8834"
 
 # set the name of the policy to export
-policy_name="Custom_Nessus_Policy-Pn_pAll_AllSSLTLS-Web-NoLocalCheck-NoDOS" ## FIXME
+POLICY_FILE="Custom_Nessus_Policy-Pn_pAll_AllSSLTLS-Web-NoLocalCheck-NoDOS" ## FIXME
+TARGETS_FILE="up.txt"
 
 # set the name of the CSV file to download
 csv_file="nessus_scan_results.csv"
@@ -36,7 +37,7 @@ fi
 
 # get the policy ID for the specified policy name
 response=$(curl -s -k -H "X-Cookie: token=$token" "$host/policies")
-policy_id=$(echo "$response" | python -c "import sys, json; data = json.load(sys.stdin); policies = [p['id'] for p in data['policies'] if p['name'] == '$policy_name']; print(policies[0] if policies else '')")
+policy_id=$(echo "$response" | python -c "import sys, json; data = json.load(sys.stdin); policies = [p['id'] for p in data['policies'] if p['name'] == '$POLICY_FILE']; print(policies[0] if policies else '')")
 
 if [ -z "$policy_id" ]; then
   echo "Error: policy not found"
