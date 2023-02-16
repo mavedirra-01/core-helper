@@ -403,12 +403,13 @@ class Nessus:
 				if policy is None:
 					raise Exception(f"No policy found with name {self.policy_name}")
 				policy_id = policy["id"]
-
+				with open(self.targets_file, "r") as f:
+					targets = f.read()
 				# upload targets file
-				file = {
-					"Filedata": ("targets.txt", self.targets_file)
-				}
-				response = requests.post(self.url + "/file/upload", headers=self.api_auth, files=file, verify=False)
+				# file = {
+				# 	"Filedata": ("targets.txt", self.targets_file)
+				# }
+				response = requests.post(self.url + "/file/upload", headers=self.api_auth, files=targets, verify=False)
 				if response.status_code != 200:
 					raise Exception("Failed to upload targets file")
 
@@ -422,7 +423,7 @@ class Nessus:
 						"enabled": False,
 						"scanner_id": "1",
 						"folder_id": 3,
-						"text_targets": "targets.txt",
+						"text_targets": targets,
 						"description": "No host Discovery\nAll TCP port\nAll Service Discovery\nDefault passwords being tested\nGeneric Web Test\nNo compliance or local Check\nNo DOS plugins\n",
 					}
 				}
