@@ -403,15 +403,15 @@ class Nessus:
 				if policy is None:
 					raise Exception(f"No policy found with name {self.policy_name}")
 				policy_id = policy["id"]
-				with open(self.targets_file, "r") as f:
-					targets = f.read()
-				# # upload targets file
-				# 	file = {
-				# 		"Filedata": ("targets.txt", self.targets_file)
-				# 	}
-				# response = requests.post(self.url + "/file/upload", headers=self.api_auth, files=self.targets_file, verify=False)
-				# if response.status_code != 200:
-				# 	raise Exception("Failed to upload targets file")
+				# with open(self.targets_file, "r") as f:
+				# 	targets = f.read()
+				# upload targets file
+				file = {
+						"Filedata": ("targets.txt", self.targets_file)
+					}
+				response = requests.post(self.url + "/file/upload", headers=self.api_auth, files=file, verify=False)
+				if response.status_code != 200:
+					raise Exception("Failed to upload targets file")
 
 				# send "create scan" request
 				data = {
@@ -423,7 +423,7 @@ class Nessus:
 						"enabled": False,
 						"scanner_id": "1",
 						"folder_id": 3,
-						"text_targets": targets,
+						"file_targets": "targets.txt",
 						"description": "No host Discovery\nAll TCP port\nAll Service Discovery\nDefault passwords being tested\nGeneric Web Test\nNo compliance or local Check\nNo DOS plugins\n",
 					}
 				}
@@ -615,7 +615,7 @@ class Nessus:
 		self.analyze_results(scan_file)
 
 	def trigger(self):
-		self.exclude_targets()
+		#self.exclude_targets()
 		self.update_settings()
 		self.import_policies()
 		self.create_scan(False)
