@@ -274,10 +274,14 @@ class Nessus:
 
 				drone.close()
 				p.success(f"Exclusion targets added to reject list on /opt/nessus/etc/nessus/nessusd.rules")
+				log.info("Targets added to reject list successfully.")
 
 			except Exception as e:
-				p.failure(e.args[0])
+				if p is not None:
+					p.failure(e.args[0])
+				log.error(f"Failed to add targets to reject list: {e.args[0]}")
 				exit()
+
 
 	def update_settings(self):
 		with LogContext("Updating settings") as p:
@@ -302,14 +306,14 @@ class Nessus:
 						raise Exception("Could not update settings.")
 
 				p.success()
-		
-			except Exception as e:		
-				p.failure(e.args[0])
+
+			except Exception as e:
+				p.failure(str(e))
 				exit()
 
 	def import_policies(self):
 		with LogContext("Importing policies") as p:
-			try: 
+			try:
 				# check if policy file already exists:
 				policy_name = self.policy_file_name.rsplit(".", 1)[0]
 				if "\\" in policy_name:
@@ -320,18 +324,13 @@ class Nessus:
 				if policy_name in response.text:
 					p.failure("Policy file already exists, skipping import")
 					return
-			
-			except Exception as e:
-				log.error()
-				exit()
 
-			try:
 				# first, upload the policies file to nessus
 				file = {
 					"Filedata": (self.policy_file_name, self.policy_file)
 				}
 				response = requests.post(self.url + "/file/upload", headers=self.api_auth, files=file, verify=False)
-				
+
 				# then, retrieve the file and post it to policies
 				fileuploaded = json.loads(response.text)["fileuploaded"]
 				data = {
@@ -340,35 +339,39 @@ class Nessus:
 				response = requests.post(self.url + "/policies/import", headers=self.api_auth, data=data, verify=False)
 				if response.status_code == 200:
 					p.success()
-				
-				else:
-					raise Exception()
 
-			except:
-				p.failure()
+				else:
+					raise Exception("Could not import policies.")
+
+			except Exception as e:
+				p.failure(e.args[0])
 				exit()
+
 
 	def create_scan(self, launch):
 		with LogContext("Creating new scan") as p:
-			# check if scan name already exists first:
-			if self.get_scan_info() is not None:
-				p.failure("Scan name already exists")
-				exit()
-
 			try:
+				# check if scan name already exists first:
+				if self.get_scan_info() is not None:
+					p.failure("Scan name already exists")
+					return
+
 				project_name = self.project_name
 
 				# get policy id
 				policies = json.loads(requests.get(self.url + "/policies", headers=self.api_auth, verify=False).text)["policies"]
-				for policy in policies:
-					if policy["name"] == self.policy_name:
-						policy_id = policy["id"]
-			
-					# upload targets file
+				policy = next((p for p in policies if p["name"] == self.policy_name), None)
+				if policy is None:
+					raise Exception(f"No policy found with name {self.policy_name}")
+				policy_id = policy["id"]
+
+				# upload targets file
 				file = {
 					"Filedata": ("targets.txt", self.targets_file)
 				}
-				requests.post(self.url + "/file/upload", headers=self.api_auth, files=file, verify=False)
+				response = requests.post(self.url + "/file/upload", headers=self.api_auth, files=file, verify=False)
+				if response.status_code != 200:
+					raise Exception("Failed to upload targets file")
 
 				# send "create scan" request
 				data = {
@@ -380,16 +383,20 @@ class Nessus:
 						"enabled": False,
 						"scanner_id": "1",
 						"folder_id": 3,
-						"file_targets": "targets.txt",
+						"text_targets": "targets.txt",
 						"description": "No host Discovery\nAll TCP port\nAll Service Discovery\nDefault passwords being tested\nGeneric Web Test\nNo compliance or local Check\nNo DOS plugins\n",
 					}
 				}
-				requests.post(self.url + "/scans", headers=self.token_auth, json=data, verify=False)
+				response = requests.post(self.url + "/scans", headers=self.token_auth, json=data, verify=False)
+				if response.status_code != 200:
+					raise Exception("Failed to create scan")
+
 				p.success()
 
 			except Exception as e:
-				p.failure()
+				p.failure(str(e))
 				exit()
+
 
 	def get_scan_info(self):
 		try:
@@ -410,11 +417,14 @@ class Nessus:
 		with LogContext(f"Sending {action} request to \"{self.project_name}\"") as p:
 			try:
 				scan_id = self.get_scan_info()["id"]
-				response = requests.post(self.url + "/scans/" + str(scan_id) + "/" + action, headers=self.token_auth, verify=False)
-				p.success()
+				response = requests.post(self.url + f"/scans/{scan_id}/{action}", headers=self.token_auth, verify=False)
+				if response.status_code == 200:
+					p.success()
+				else:
+					raise Exception("Could not complete scan action")
 
 			except Exception as e:
-				log.error(e)
+				p.failure(e.args[0])
 				exit()
 
 	def monitor_scan(self):
@@ -423,15 +433,16 @@ class Nessus:
 		with LogContext(f"Scan status") as p:
 			while status == "running":
 				p.status(status)
-				status = self.get_scan_info()["status"]			
+				status = self.get_scan_info()["status"]           
 				time.sleep(60)
 				time_elapsed += 1
 				if time_elapsed == 5:
-					p.status("Reauthenticating to keep session alive")
-					self.get_auth(verbose=False)
+					with LogContext("Reauthenticating"):
+						self.get_auth(verbose=False)
 					time_elapsed = 0
 
 			p.success(status)
+
 
 	def export_scan(self):
 		try:
@@ -441,10 +452,14 @@ class Nessus:
 			# get html template id
 			response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
 			templates = json.loads(response.text)
+			template_id = None
 			for template in templates:
 				if template["name"] == "Complete List of Vulnerabilities by Host":
 					template_id = template["id"]
 					break
+
+			if template_id is None:
+				raise Exception("HTML template not found")
 
 			# format handlers
 			formats = {
@@ -501,6 +516,8 @@ class Nessus:
 					# get scan token
 					data = v
 					response = requests.post(self.url + "/scans/" + str(scan_id) + "/export", headers=self.token_auth, json=data, verify=False)
+					if response.status_code != 200:
+						raise Exception(f"Exporting {k} file failed with status code {response.status_code}")
 					scan_token = json.loads(response.text)["token"]
 
 					# download file
@@ -516,34 +533,37 @@ class Nessus:
 							break
 
 						else:
-							raise Exception
-			
+							raise Exception(f"Downloading {k} file failed with status code {response.status_code}")
+
 			return self.project_name + ".nessus"
 
 		except Exception as e:
-			p.failure(e.args[0])
+			with LogContext("Exporting scan failed") as p:
+				p.failure(str(e))
 			exit()
 
 	def analyze_results(self, scan_file):
-		with LogContext("Analyzing results") as p:
-			try:
-				analyze = Analyzer(scan_file, self.output_folder)
-				drone = Drone(self.drone, self.username, self.password)
+			with LogContext("Analyzing results") as p:
+				try:
+					analyze = Analyzer(scan_file, self.output_folder)
+					
+					p.status(f"Parsing exploitable vulnerabilities")
+					analyze.vulnerabilities()
+					p.status(f"Parsing web directories found")
+					analyze.web_directories()
+					p.status(f"Running eyewitness (results in /tmp/eyewitness on drone)")
+					with Drone(self.drone, self.username, self.password) as drone:
+						remote_file = drone.upload(scan_file)
+						drone.execute(f"eyewitness -x {remote_file} -d /tmp/eyewitness --no-prompt")
 
-				p.status(f"Parsing exploitable vulnerabilities")
-				analyze.vulnerabilities()
-				p.status(f"Parsing web directories found")
-				analyze.web_directories()
-				p.status(f"Running eyewitness (results in /tmp/eyewitness on drone)")
-				remote_file = drone.upload(scan_file)
-				drone.execute(f"eyewitness -x {remote_file} -d /tmp/eyewitness --no-prompt")
-				drone.close()
+					p.success()
 
-				p.success()
-
-			except Exception as e:
-				log.error(e.args[0])
-				exit()
+				except Exception as e:
+					log.error(e.args[0])
+					sys.exit()
+					
+				finally:
+					drone.close()  # ensure that drone object is closed even if there's an exception
 
 	# Mode handlers
 	def deploy(self):
