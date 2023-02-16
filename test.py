@@ -405,13 +405,13 @@ class Nessus:
 				policy_id = policy["id"]
 				with open(self.targets_file, "r") as f:
 					targets = f.read()
-				# upload targets file
-				# file = {
-				# 	"Filedata": ("targets.txt", self.targets_file)
-				# }
-				response = requests.post(self.url + "/file/upload", headers=self.api_auth, files=targets, verify=False)
-				if response.status_code != 200:
-					raise Exception("Failed to upload targets file")
+				# # upload targets file
+				# 	file = {
+				# 		"Filedata": ("targets.txt", self.targets_file)
+				# 	}
+				# response = requests.post(self.url + "/file/upload", headers=self.api_auth, files=self.targets_file, verify=False)
+				# if response.status_code != 200:
+				# 	raise Exception("Failed to upload targets file")
 
 				# send "create scan" request
 				data = {
