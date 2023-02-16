@@ -25,33 +25,54 @@ import time
 import xml.etree.ElementTree as XML
 requests.packages.urllib3.disable_warnings()
 log.basicConfig(level=log.DEBUG)
+# class LogContext:
+#     def __init__(self, message):
+#         self.message = message
+
+#     def __enter__(self):
+#         log.info(self.message)
+
+#     def __exit__(self, exc_type, exc_value, traceback):
+#         if exc_type is not None:
+#             log.error(f"{self.message}: {exc_type.__name__} - {exc_value}")
+#         else:
+#             log.info(f"{self.message} completed successfully.")
+
+#     def status(self, status_message):
+#         log.info(f"{self.message}: {status_message}")
+
+#     def success(self, success_message=None):
+#         if success_message is None:
+#             success_message = f"{self.message} completed successfully."
+#         log.info(success_message)
+
+#     def failure(self, failure_message=None):
+#         if failure_message is None:
+#             failure_message = f"{self.message} failed."
+#         log.error(failure_message)
+ 
 class LogContext:
     def __init__(self, message):
         self.message = message
 
     def __enter__(self):
         log.info(self.message)
+        return self
+
+    def failure(self, message):
+        log.error(message)
+
+    def status(self, message):
+        log.info(f"[STATUS] {message}")
+
+    def success(self, message=None):
+        log.info(f"[SUCCESS] {message}" if message else "[SUCCESS]")
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if exc_type is not None:
-            log.error(f"{self.message}: {exc_type.__name__} - {exc_value}")
+        if exc_type:
+            self.failure(exc_value)
         else:
-            log.info(f"{self.message} completed successfully.")
-
-    def status(self, status_message):
-        log.info(f"{self.message}: {status_message}")
-
-    def success(self, success_message=None):
-        if success_message is None:
-            success_message = f"{self.message} completed successfully."
-        log.info(success_message)
-
-    def failure(self, failure_message=None):
-        if failure_message is None:
-            failure_message = f"{self.message} failed."
-        log.error(failure_message)
- 
-
+            self.success()     
 
 
 class Drone():
