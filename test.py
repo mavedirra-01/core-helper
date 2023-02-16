@@ -284,42 +284,42 @@ class Nessus:
 		return keys
 
 	# Engine
-	# def exclude_targets(self):
-	# 	with LogContext("Adding targets to reject list") as p:
-	# 		try:
-	# 			# Connect to the SSH server
-	# 			p.status("Connecting to the ssh server")
-	# 			drone = Drone(self.drone, self.username, self.password)
+	def exclude_targets(self):
+		with LogContext("Adding targets to reject list") as p:
+			try:
+				# Connect to the SSH server
+				p.status("Connecting to the ssh server")
+				drone = Drone(self.drone, self.username, self.password)
 
-	# 			# Fetch drone IP
-	# 			p.status("Getting drone IP")
-	# 			cmd = 'ip a s eth0 | grep -o "inet .* brd" | grep -o "[0-9]*\\.[0-9]*\\.[0-9]*\\.[0-9]*"'
-	# 			drone_ip = drone.execute(cmd).split("\n")[0]
+				# Fetch drone IP
+				p.status("Getting drone IP")
+				cmd = 'ip a s eth0 | grep -o "inet .* brd" | grep -o "[0-9]*\\.[0-9]*\\.[0-9]*\\.[0-9]*"'
+				drone_ip = drone.execute(cmd).split("\n")[0]
 
-	# 			# Add drone IP to nessus rules
-	# 			p.status(f"Adding drone IP {drone_ip} to reject list")
-	# 			cmd = f"echo 'reject {drone_ip}' | sudo tee -a /opt/nessus/etc/nessus/nessusd.rules"
-	# 			drone.execute(cmd)
+				# Add drone IP to nessus rules
+				p.status(f"Adding drone IP {drone_ip} to reject list")
+				cmd = f"echo 'reject {drone_ip}' | sudo tee -a /opt/nessus/etc/nessus/nessusd.rules"
+				drone.execute(cmd)
 
-	# 			# Add targets provided from -e to nessus rules
-	# 			try:
-	# 				p.status(f"Adding exclude targets from to reject list")
-	# 				for exclude_target in self.exclude_file:
-	# 					exclude_target = exclude_target.rstrip()
-	# 					cmd = f"echo 'reject {exclude_target}' | sudo tee -a /opt/nessus/etc/nessus/nessusd.rules"
-	# 					drone.execute(cmd)
-	# 			except:
-	# 				pass
+				# Add targets provided from -e to nessus rules
+				try:
+					p.status(f"Adding exclude targets from to reject list")
+					for exclude_target in self.exclude_file:
+						exclude_target = exclude_target.rstrip()
+						cmd = f"echo 'reject {exclude_target}' | sudo tee -a /opt/nessus/etc/nessus/nessusd.rules"
+						drone.execute(cmd)
+				except:
+					pass
 
-	# 			drone.close()
-	# 			p.success(f"Exclusion targets added to reject list on /opt/nessus/etc/nessus/nessusd.rules")
-	# 			log.info("Targets added to reject list successfully.")
+				drone.close()
+				p.success(f"Exclusion targets added to reject list on /opt/nessus/etc/nessus/nessusd.rules")
+				log.info("Targets added to reject list successfully.")
 
-	# 		except Exception as e:
-	# 			if p is not None:
-	# 				p.failure(e.args[0])
-	# 			log.error(f"Failed to add targets to reject list: {e.args[0]}")
-	# 			exit()
+			except Exception as e:
+				if p is not None:
+					p.failure(e.args[0])
+				log.error(f"Failed to add targets to reject list: {e.args[0]}")
+				exit()
 
 
 	def update_settings(self):
@@ -580,29 +580,28 @@ class Nessus:
 			with LogContext("Exporting scan failed") as p:
 				p.failure(str(e))
 			exit()
-
 	def analyze_results(self, scan_file):
 			with LogContext("Analyzing results") as p:
+				################################################ 
+				# My contents here #
 				try:
 					analyze = Analyzer(scan_file, self.output_folder)
-					
+					drone = Drone(self.drone, self.username, self.password)
+
 					p.status(f"Parsing exploitable vulnerabilities")
 					analyze.vulnerabilities()
 					p.status(f"Parsing web directories found")
 					analyze.web_directories()
 					p.status(f"Running eyewitness (results in /tmp/eyewitness on drone)")
-					with Drone(self.drone, self.username, self.password) as drone:
-						remote_file = drone.upload(scan_file)
-						drone.execute(f"eyewitness -x {remote_file} -d /tmp/eyewitness --no-prompt")
+					remote_file = drone.upload(scan_file)
+					drone.execute(f"eyewitness -x {remote_file} -d /tmp/eyewitness --no-prompt")
+					drone.close()
 
 					p.success()
 
 				except Exception as e:
 					log.error(e.args[0])
-					sys.exit()
-					
-				finally:
-					drone.close()  # ensure that drone object is closed even if there's an exception
+					exit()
 
 	# Mode handlers
 	def deploy(self):
@@ -615,7 +614,7 @@ class Nessus:
 		self.analyze_results(scan_file)
 
 	def trigger(self):
-		# self.exclude_targets()
+		self.exclude_targets()
 		self.update_settings()
 		self.import_policies()
 		self.create_scan(False)
