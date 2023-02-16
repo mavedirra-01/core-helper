@@ -33,7 +33,25 @@ class LogContext:
         log.info(self.message)
 
     def __exit__(self, exc_type, exc_value, traceback):
-        pass
+        if exc_type is not None:
+            log.error(f"{self.message}: {exc_type.__name__} - {exc_value}")
+        else:
+            log.info(f"{self.message} completed successfully.")
+
+    def status(self, status_message):
+        log.info(f"{self.message}: {status_message}")
+
+    def success(self, success_message=None):
+        if success_message is None:
+            success_message = f"{self.message} completed successfully."
+        log.info(success_message)
+
+    def failure(self, failure_message=None):
+        if failure_message is None:
+            failure_message = f"{self.message} failed."
+        log.error(failure_message)
+ 
+
 
 
 class Drone():
