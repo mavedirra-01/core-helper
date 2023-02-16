@@ -199,8 +199,7 @@ class Nessus:
 
 	# Auth handlers
 	def get_auth(self, verbose=True):
-		if not verbose: log.error()
-		with LogContext("Retrieving api tokens") as p:
+		with LogContext("Retrieving API tokens") as p:
 			try:
 				self.token_keys = self.get_tokens()
 				self.token_auth = {
@@ -212,11 +211,15 @@ class Nessus:
 				self.api_auth = {
 					"X-ApiKeys": "accessKey="+self.api_keys["accessKey"]+"; secretKey="+self.api_keys["secretKey"]
 				}
-				p.success()
-				log.info()
+
+				if verbose:
+					log.info("API tokens retrieved successfully.")
 
 			except Exception as e:
-				p.failure(e.args[0])
+				if p is not None:
+					p.failure(e.args[0])
+				if verbose:
+					log.error(f"Failed to retrieve API tokens: {e.args[0]}")
 				exit()
 
 	def get_tokens(self):
