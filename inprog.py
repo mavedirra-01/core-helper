@@ -229,7 +229,7 @@ class Nessus:
 			"username": username,
 			"password": password
 		}
-		#self.get_auth()
+		self.get_auth()
 
 		if policy_file: 
 			self.policy_file = policy_file.read()
@@ -673,7 +673,7 @@ class Nessus:
 		self.analyze_results(scan_file)
 
 	def trigger(self):
-		#self.exclude_targets()
+		self.exclude_targets()
 		self.update_settings()
 		self.import_policies()
 		self.create_scan(False)
