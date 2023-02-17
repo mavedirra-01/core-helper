@@ -553,8 +553,8 @@ class Nessus:
 			version_info = nessus_version.json()
 			ui_version = version_info.get("nessus_ui_version")
 			if re.match(r"^8(\.|$)", ui_version):
-				requests.get(self.url + f"/editor/policy/templates", headers=self.token_auth, verify=False)
-				templates = json.loads(nessus_version.text)
+				responce = requests.get(self.url + f"/scans/{scan_id}/export/formats", headers=self.token_auth, verify=False)
+				templates = json.loads(responce.text)
 				print(templates)
 				
 			else:
