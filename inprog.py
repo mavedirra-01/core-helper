@@ -554,23 +554,24 @@ class Nessus:
 			ui_version = version_info.get("nessus_ui_version")
 			
 			if re.match(r"^8(\.|$)", ui_version):
-				responce = requests.get(self.url + f"/scans/{scan_id}/export/formats", headers=self.token_auth, verify=False)
-				templates = json.loads(responce.text)
-				# template_id = "Vulnerabilites By Plugin"
+				# responce = requests.get(self.url + f"/scans/{scan_id}/export/formats", headers=self.token_auth, verify=False)
+				# templates = json.loads(responce.text)
+				template_id = "Vulnerabilites By Plugin"
 				
 			else:
-				response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
-				templates = json.loads(response.text)
+				template_id = "214"
+				# response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
+				# templates = json.loads(response.text)
 				#print(templates)
 				
 			# get html template id
-				for template in templates:
-					print(template)
-					if template["name"] == "Detailed Vulnerabilites By Plugin":
-						template_id = template["id"]
-						print(template_id)
-						break
-								#			
+				# for template in templates:
+				# 	print(template)
+				# 	if template["name"] == "Detailed Vulnerabilites By Plugin":
+				# 		template_id = template["id"]
+				# 		print(template_id)
+				# 		break
+											
 			# format handlers
 			formats = {
 				"nessus": {
