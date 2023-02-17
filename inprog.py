@@ -250,11 +250,14 @@ class Nessus:
 		if scan_file:
 			self.scan_file = scan_file
 	def upload_script(self):
-			with LogContext("Uploading Verify Script") as p:
+			with LogContext("Uploading Verify Script and csv file") as p:
 				try:
 					drone = Drone(self.drone, self.username, self.password)
+					csv_file = os.path.join(self.output_folder, self.project_name + f".csv")
 					script = "nmb.py"
+					os.path.isfile(csv_file)
 					drone.upload(script)
+					drone.upload(csv_file)
 					drone.close()
 
 					p.success()
@@ -266,8 +269,8 @@ class Nessus:
 			with LogContext("Executing Verify Script") as p:
 				try:
 					drone = Drone(self.drone, self.username, self.password)
-					project_file_name = args.client
-					cmd = f"python3 /tmp/nmb.py ~/{project_file_name}.csv"
+					
+					cmd = f"python3 /tmp/nmb.py ~/{self.project_name}.csv"
 					stdout_str = drone.execute(cmd)
 					stdout_file = io.StringIO(stdout_str)
 					while True:
@@ -547,18 +550,23 @@ class Nessus:
 		try:
 			# get scan id
 			scan_id = self.get_scan_info()["id"]
-			template_id = None
-			
-			nessus_version = requests.get(self.url + "/server/properties", headers=self.token_auth, verify=False)
-			version_info = nessus_version.json()
-			ui_version = version_info.get("nessus_ui_version")
-			
-			if re.match(r"^8(\.|$)", ui_version):
-				template_id = "214"
-				
-			else:
-				template_id = "214"
-											
+			template_id = "Vulnerabilites By Plugin"
+			# nessus_version = requests.get(self.url + "/server/properties", headers=self.token_auth, verify=False)
+			# version_info = nessus_version.json()
+			# ui_version = version_info.get("nessus_ui_version")
+			# if re.match(r"^8(\.|$)", ui_version):
+			# 	template_id = "Vulnerabilites By Plugin" # Detailed vulns by plugin 
+			# 	# 214
+			# else:
+############# Removed the below code as the url is different between nessus 8 and nessus 10 but the template ID is the same
+			# response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
+			# templates = json.loads(response.text)
+			# for template in templates:
+			# 	if template["name"] == "Complete List of Vulnerabilities by Host":
+			# 		template_id = template["id"]
+			# 		break	
+
+
 			# format handlers
 			formats = {
 				"nessus": {
