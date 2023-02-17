@@ -9,7 +9,7 @@
 # -o options not working properly. Debug.
 # Check regex on tokens["api_token"] with different drones. May have to tweak it to properly get the token.
 
-from fabric import Connection, Config
+# from fabric import Connection, Config
 import argparse
 import ipaddress
 import getpass
