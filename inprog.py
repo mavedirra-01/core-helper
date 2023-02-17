@@ -565,11 +565,12 @@ class Nessus:
 				
 			# get html template id
 				for template in templates:
+					print(template)
 					if template["name"] == "Detailed Vulnerabilites By Plugin":
 						template_id = template["id"]
 						print(template_id)
 						break
-
+								#"chapters": "vuln_by_plugin",					
 			# format handlers
 			formats = {
 				"nessus": {
@@ -578,7 +579,6 @@ class Nessus:
 				"html": {
 					"format": "html",
 					"template_id": template_id,
-					"chapters": "vuln_by_plugin",
 					"csvColumns": {},
 					"formattingOptions": {},
 					"extraFilters": {
