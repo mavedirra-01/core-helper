@@ -25,7 +25,7 @@ import logging as log
 import time
 import xml.etree.ElementTree as XML
 requests.packages.urllib3.disable_warnings()
-log.basicConfig(level=log.INFO)
+log.basicConfig(level=log.DEBUG)
 # class LogContext:
 #     def __init__(self, message):
 #         self.message = message
