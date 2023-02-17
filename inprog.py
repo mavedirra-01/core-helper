@@ -549,7 +549,7 @@ class Nessus:
 			template_id = None
 			# get html template id
 			nessus_version = requests.get(self.url + f"/server/status", headers=self.token_auth, verify=False)
-			print(nessus_version)
+			print(nessus_version.text)
 			if nessus_version.text.startswith("8"):
 				requests.get(self.url + f"/editor/policy/templates", headers=self.token_auth, verify=False)
 				templates = json.loads(nessus_version.text)
