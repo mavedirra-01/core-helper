@@ -552,7 +552,7 @@ class Nessus:
 			version_info = nessus_version.json()
 			ui_version = version_info.get("nessus_ui_version: ")
 			print(ui_version)
-			if ui_version.startswith("8"):
+			if ui_version == "8":
 				requests.get(self.url + f"/editor/policy/templates", headers=self.token_auth, verify=False)
 				templates = json.loads(nessus_version.text)
 				print(templates)
