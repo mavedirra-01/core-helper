@@ -548,7 +548,7 @@ class Nessus:
 			scan_id = self.get_scan_info()["id"]
 			template_id = None
 			# get html template id
-			nessus_version = requests.get(self.url + f"/server/version", headers=self.token_auth, verify=False)
+			nessus_version = requests.get(self.url + f"/server/properties", headers=self.token_auth, verify=False)
 			print(nessus_version.text)
 			if nessus_version.text.startswith("8"):
 				requests.get(self.url + f"/editor/policy/templates", headers=self.token_auth, verify=False)
