@@ -500,7 +500,7 @@ class Nessus:
 		try:
 			response = requests.get(self.url + "/scans?folder_id=3", headers=self.token_auth, verify=False)
 			scans = json.loads(response.text)["scans"]
-			print(scans)
+			
 			if scans == None:
 				return
 
@@ -553,14 +553,14 @@ class Nessus:
 			version_info = nessus_version.json()
 			ui_version = version_info.get("nessus_ui_version")
 			print(ui_version)
-			if ui_version == "8.15.0":
+			if re.match(r"^8(\.|$)", ui_version):
 				requests.get(self.url + f"/editor/policy/templates", headers=self.token_auth, verify=False)
 				templates = json.loads(nessus_version.text)
-				print(templates)
+				
 			else:
 				response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
 				templates = json.loads(response.text)
-				print(templates)
+				
 			# get html template id
 			for template in templates:
 				if "name" in template and template["name"] == "Complete List of Vulnerabilities by Host":
