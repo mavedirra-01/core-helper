@@ -552,7 +552,7 @@ class Nessus:
 			templates = json.loads(response.text)
 			
 			for template in templates:
-				if "name" in template and template["name"] == "Complete List of Vulnerabilities by Host":
+				if "name" in template and template["name"] == "Complete List of Vulnerabilities by Plugin":
 					template_id = template["id"]
 					break
 
