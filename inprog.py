@@ -637,8 +637,8 @@ class Nessus:
 
 		except Exception as e:
 			with LogContext("Exporting scan failed") as p:
-				p.failure(str(e))
-			exit()
+				p.failure()
+				exit()
 	def analyze_results(self, scan_file):
 			with LogContext("Analyzing results") as p:
 				################################################ 
