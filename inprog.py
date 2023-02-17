@@ -500,6 +500,7 @@ class Nessus:
 		try:
 			response = requests.get(self.url + "/scans?folder_id=3", headers=self.token_auth, verify=False)
 			scans = json.loads(response.text)["scans"]
+			print(scans)
 			if scans == None:
 				return
 
