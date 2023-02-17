@@ -564,12 +564,12 @@ class Nessus:
 				#print(templates)
 				
 			# get html template id
-			for template in templates:
-				print(template)
-				if template["name"] == "Detailed Vulnerabilites By Plugin":
-					template_id = template["id"]
-					print(template_id)
-					break
+				for template in templates:
+					print(template)
+					if template["name"] == "Detailed Vulnerabilites By Plugin":
+						template_id = template["id"]
+						print(template_id)
+						break
 								#"chapters": "vuln_by_plugin",					
 			# format handlers
 			formats = {
