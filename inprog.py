@@ -570,7 +570,7 @@ class Nessus:
 						template_id = template["id"]
 						print(template_id)
 						break
-								#"chapters": "vuln_by_plugin",					
+								#			
 			# format handlers
 			formats = {
 				"nessus": {
@@ -579,6 +579,7 @@ class Nessus:
 				"html": {
 					"format": "html",
 					"template_id": template_id,
+					"chapters": "vuln_by_plugin",
 					"csvColumns": {},
 					"formattingOptions": {},
 					"extraFilters": {
