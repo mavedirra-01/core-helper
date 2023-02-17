@@ -556,7 +556,7 @@ class Nessus:
 			if re.match(r"^8(\.|$)", ui_version):
 				responce = requests.get(self.url + f"/scans/{scan_id}/export/formats", headers=self.token_auth, verify=False)
 				templates = json.loads(responce.text)
-				# template_id = "Vulnerabilites By Plugin"
+				template_id = "Vulnerabilites By Plugin"
 				
 			else:
 				response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
