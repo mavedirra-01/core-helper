@@ -10,7 +10,7 @@ import os
 import shutil
 import time
 import argparse
-
+import zipfile
 ### Colours
 green = "\033[32m[+]\033[0m"
 red = "\033[91m[-]\033[0m"
@@ -309,6 +309,19 @@ def msfconsole_verify(plugin_id, module, output_file):
             break
 ############################################################################################
 
+def zip_evidence():
+    directory = make_evidence
+    zip_name = "evidence.zip"
+    zip_file = zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED)
+    print(blue,"Zipping evidence ...")
+    for file_name in os.listdir(directory):
+    # Ignore subdirectories
+        if not os.path.isdir(file_name):
+        # Add the file to the zip file
+            zip_file.write(os.path.join(directory, file_name), file_name)
+    zip_file.close()
+
+
 def get_supported_plugins(file, plugin_ids):
     supported_plugins = set()
     with open(file, 'r', encoding="utf8") as f:
@@ -363,7 +376,7 @@ if msf_check == 1:
 
 ##############################################################################################
 
-
+zip_evidence()
 
 ###############################################################################################
 

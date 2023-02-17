@@ -9,7 +9,7 @@
 # -o options not working properly. Debug.
 # Check regex on tokens["api_token"] with different drones. May have to tweak it to properly get the token.
 
-
+from fabric import Connection, Config
 import argparse
 import ipaddress
 import getpass
@@ -20,11 +20,12 @@ import pathlib
 import re
 import requests, urllib3
 import sys
+import io
 import logging as log
 import time
 import xml.etree.ElementTree as XML
 requests.packages.urllib3.disable_warnings()
-log.basicConfig(level=log.DEBUG)
+log.basicConfig(level=log.INFO)
 # class LogContext:
 #     def __init__(self, message):
 #         self.message = message
@@ -85,6 +86,19 @@ class Drone():
 
 		except Exception as e:
 			log.error(e.args[0])
+			exit()
+	
+	def download(self, remote_file):
+		try:
+			sftp = self.ssh.open_sftp()
+			local_file = os.path.basename(remote_file)
+			sftp.get(remote_file, local_file)
+			sftp.close()
+			return local_file
+
+		except Exception as e:
+			log.error(e)
+			self.close()
 			exit()
 
 	def upload(self, local_file):
@@ -215,7 +229,7 @@ class Nessus:
 			"username": username,
 			"password": password
 		}
-		self.get_auth()
+		#self.get_auth()
 
 		if policy_file: 
 			self.policy_file = policy_file.read()
@@ -235,6 +249,53 @@ class Nessus:
 
 		if scan_file:
 			self.scan_file = scan_file
+	def upload_script(self):
+			with LogContext("Uploading Verify Script") as p:
+				try:
+					drone = Drone(self.drone, self.username, self.password)
+					script = "nmb.py"
+					drone.upload(script)
+					drone.close()
+
+					p.success()
+
+				except Exception as e:
+					log.error(e.args[0])
+					exit()
+	def execute_script(self):
+			with LogContext("Executing Verify Script") as p:
+				try:
+					drone = Drone(self.drone, self.username, self.password)
+					project_file_name = args.client
+					cmd = f"python3 /tmp/nmb.py ~/{project_file_name}.csv"
+					stdout_str = drone.execute(cmd)
+					stdout_file = io.StringIO(stdout_str)
+					while True:
+						line = stdout_file.readline()
+						if not line:
+							break
+						print(line, end="")
+					drone.close()
+
+					p.success()
+
+				except Exception as e:
+					log.error(e.args[0])
+					exit()
+	def evidence_download(self):
+		with LogContext("Downloading Evidence") as p:
+				try:
+					drone = Drone(self.drone, self.username, self.password)
+					remote_file = f"/home/{username}/evidence.zip"
+					local_file = drone.download(remote_file)
+					drone.close()
+
+					p.success()
+
+				except Exception as e:
+					log.error(e.args[0])
+					exit()
+
 
 	# Auth handlers
 	def get_auth(self, verbose=True):
@@ -580,6 +641,8 @@ class Nessus:
 			exit()
 	def analyze_results(self, scan_file):
 			with LogContext("Analyzing results") as p:
+				################################################ 
+				# My contents here #
 				try:
 					analyze = Analyzer(scan_file, self.output_folder)
 					drone = Drone(self.drone, self.username, self.password)
@@ -634,6 +697,11 @@ class Nessus:
 		scan_file = self.export_scan()
 		self.analyze_results(scan_file)
 
+	def manual(self):
+		self.upload_script()
+		self.execute_script()
+		self.evidence_download()
+		
 def get_creds():
 	username = input("username: ").rstrip()
 	password = getpass.getpass("password: ")
@@ -650,7 +718,7 @@ if __name__ == "__main__":
 				 "deployer.py nessus -d 10.88.88.101 -c myclient -m pause\n" \
 				 "deployer.py nessus -d strange -c myclient -m resume -o /home/drone/Downloads"
 	)
-	parser.add_argument("-m", "--mode", required=True, choices=["deploy","trigger","launch","pause","resume","monitor","export","analyze"], help="" \
+	parser.add_argument("-m", "--mode", required=True, choices=["deploy","trigger","launch","pause","resume","monitor","export","analyze", "manual"], help="" \
 		"choose mode to run Nessus:\n" \
 		"deploy: update settings, upload policy file, upload targets file, launch scan, monitor scan, export results, analyze results\n" \
 		"trigger: update settings, upload policy file, upload targets files\n" \
@@ -659,7 +727,8 @@ if __name__ == "__main__":
 		"resume: resume scan, export results, analyze results\n" \
 		"monitor: monitor scan\n" \
 		"export: export scan results, analyze results\n" \
-		"analyze: analyze scan file (output exploitable findings, ports matrix, and web directories found)"
+		"analyze: analyze scan file (output exploitable findings, ports matrix, and web directories found)\n"
+		"manual: perform simple nmap scans and manual finding verification"
 	)
 	parser.add_argument("-d", "--drone", required=True, help="drone name or IP")
 	parser.add_argument("-c", "--client-name", dest="client", required=False, help="client name or project name (used to name the scan and output files)")
@@ -676,7 +745,11 @@ if __name__ == "__main__":
 			log.error("You must provide a scan file (-s)")
 			exit()
 		username, password = get_creds()
-
+	if args.mode == "manual":
+		if not args.client:
+			log.error("You must provide a client name (-c)")
+			exit()
+		username, password = get_creds()
 	else:
 		if args.drone is None or args.client is None:
 			log.error("You must provide the drone name (-d) and the client name (-c)")
@@ -735,4 +808,8 @@ if __name__ == "__main__":
 
 	elif args.mode == "analyze":
 		log.info("Analyzing scan results")
-		nessus.analyze_results()		
+		nessus.analyze_results()
+
+	elif args.mode == "manual":
+		log.info("Analyzing scan results")
+		nessus.manual()			
