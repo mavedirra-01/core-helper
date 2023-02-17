@@ -552,7 +552,7 @@ class Nessus:
 			templates = json.loads(response.text)
 			
 			for template in templates:
-				if template["name"] == "Complete List of Vulnerabilities by Host":
+				if "name" in template and template["name"] == "Complete List of Vulnerabilities by Host":
 					template_id = template["id"]
 					break
 
@@ -607,7 +607,7 @@ class Nessus:
 			}
 
 			for k,v in formats.items():
-				print(k,v)
+				
 				with LogContext(f"Exporting {k} file") as p:
 					# get scan token
 					data = v
