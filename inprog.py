@@ -550,6 +550,7 @@ class Nessus:
 			# get html template id
 			response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
 			templates = json.loads(response.text)
+			print(templates)
 			
 			for template in templates:
 				if "name" in template and template["name"] == "Complete List of Vulnerabilities by Host":
