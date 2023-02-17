@@ -693,8 +693,9 @@ class Nessus:
 		self.analyze_results(scan_file)
 
 	def export(self):
-		scan_file = self.export_scan()
-		self.analyze_results(scan_file)
+		self.export_scan()
+		#scan_file = self.export_scan()
+		#self.analyze_results(scan_file)
 
 	def manual(self):
 		self.upload_script()
