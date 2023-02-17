@@ -508,7 +508,7 @@ class Nessus:
 					return scan
 		
 		except Exception as e:
-			log.error()
+			log.error("Could not get scan info")
 			exit()
 
 	def scan_action(self, action):
