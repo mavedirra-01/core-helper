@@ -552,10 +552,10 @@ class Nessus:
 			nessus_version = requests.get(self.url + "/server/properties", headers=self.token_auth, verify=False)
 			version_info = nessus_version.json()
 			ui_version = version_info.get("nessus_ui_version")
-			print(ui_version)
 			if re.match(r"^8(\.|$)", ui_version):
 				requests.get(self.url + f"/editor/policy/templates", headers=self.token_auth, verify=False)
 				templates = json.loads(nessus_version.text)
+				print(templates)
 				
 			else:
 				response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
