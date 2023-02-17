@@ -548,10 +548,16 @@ class Nessus:
 			scan_id = self.get_scan_info()["id"]
 			template_id = None
 			# get html template id
-			response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
-			templates = json.loads(response.text)
-			print(templates)
-			
+			nessus_version = requests.get(self.url + f"/server/status", headers=self.token_auth, verify=False)
+			if response.text.startswith("8"):
+				requests.get(self.url + f"/editor/policy/templates", headers=self.token_auth, verify=False)
+				templates = json.loads(response.text)
+				print(templates)
+			else:
+				response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
+				templates = json.loads(response.text)
+				print(templates)
+				
 			for template in templates:
 				if "name" in template and template["name"] == "Complete List of Vulnerabilities by Host":
 					template_id = template["id"]
