@@ -546,7 +546,7 @@ class Nessus:
 		try:
 			# get scan id
 			scan_id = self.get_scan_info()["id"]
-
+			template_id = None
 			# get html template id
 			response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
 			templates = json.loads(response.text)
@@ -605,33 +605,34 @@ class Nessus:
 					}
 				}
 			}
+			if template_id is not None:
 
-			for k,v in formats.items():
+				for k,v in formats.items():
 				
-				with LogContext(f"Exporting {k} file") as p:
-					# get scan token
-					data = v
-					response = requests.post(self.url + "/scans/" + str(scan_id) + "/export", headers=self.token_auth, json=data, verify=False)
-					if response.status_code != 200:
-						raise Exception(f"Exporting {k} file failed with status code {response.status_code}")
-					scan_token = json.loads(response.text)["token"]
+					with LogContext(f"Exporting {k} file") as p:
+						# get scan token
+						data = v
+						response = requests.post(self.url + "/scans/" + str(scan_id) + "/export", headers=self.token_auth, json=data, verify=False)
+						if response.status_code != 200:
+							raise Exception(f"Exporting {k} file failed with status code {response.status_code}")
+						scan_token = json.loads(response.text)["token"]
 
-					# download file
-					while True:
-						response = requests.get(self.url + "/tokens/" + scan_token + "/download", headers=self.token_auth, verify=False)
-						if "not ready" in response.text:
-							time.sleep(5)
+						# download file
+						while True:
+							response = requests.get(self.url + "/tokens/" + scan_token + "/download", headers=self.token_auth, verify=False)
+							if "not ready" in response.text:
+								time.sleep(5)
 
-						elif response.status_code == 200:
-							file_path = os.path.join(self.output_folder, self.project_name + f".{k}")
-							open(file_path, "wb").write(response.content)
-							p.success(f"Done. Scan file exported to \"{file_path}\"")
-							break
+							elif response.status_code == 200:
+								file_path = os.path.join(self.output_folder, self.project_name + f".{k}")
+								open(file_path, "wb").write(response.content)
+								p.success(f"Done. Scan file exported to \"{file_path}\"")
+								break
 
-						else:
-							raise Exception(f"Downloading {k} file failed with status code {response.status_code}")
+							else:
+								raise Exception(f"Downloading {k} file failed with status code {response.status_code}")
 
-			return self.project_name + ".nessus"
+				return self.project_name + ".nessus"
 
 		except Exception as e:
 			with LogContext("Exporting scan failed") as p:
