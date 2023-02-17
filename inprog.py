@@ -552,7 +552,7 @@ class Nessus:
 			nessus_version = requests.get(self.url + "/server/properties", headers=self.token_auth, verify=False)
 			version_info = nessus_version.json()
 			ui_version = version_info.get("nessus_ui_version")
-			test = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
+			
 			if re.match(r"^8(\.|$)", ui_version):
 				responce = requests.get(self.url + f"/scans/{scan_id}/export/formats", headers=self.token_auth, verify=False)
 				templates = json.loads(responce.text)
@@ -565,7 +565,7 @@ class Nessus:
 				
 			# get html template id
 			for template in templates:
-				if "name" in template and template["name"] == "Detailed Vulnerabilites By Plugin":
+				if template["name"] == "Detailed Vulnerabilites By Plugin":
 					template_id = template["id"]
 					print(template_id)
 					break
