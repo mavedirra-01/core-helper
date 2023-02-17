@@ -550,14 +550,11 @@ class Nessus:
 			# get html template id
 			response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
 			templates = json.loads(response.text)
-			template_id = None
+			
 			for template in templates:
 				if template["name"] == "Complete List of Vulnerabilities by Host":
 					template_id = template["id"]
 					break
-
-			if template_id is None:
-				raise Exception("HTML template not found")
 
 			# format handlers
 			formats = {
@@ -610,6 +607,7 @@ class Nessus:
 			}
 
 			for k,v in formats.items():
+				print(k,v)
 				with LogContext(f"Exporting {k} file") as p:
 					# get scan token
 					data = v
