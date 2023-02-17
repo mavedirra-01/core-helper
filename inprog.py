@@ -561,7 +561,7 @@ class Nessus:
 			else:
 				response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
 				templates = json.loads(response.text)
-				print(templates)
+				#print(templates)
 				
 			# get html template id
 				for template in templates:
