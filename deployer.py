@@ -9,7 +9,7 @@
 # -o options not working properly. Debug.
 # Check regex on tokens["api_token"] with different drones. May have to tweak it to properly get the token.
 
-
+# from fabric import Connection, Config
 import argparse
 import ipaddress
 import getpass
@@ -20,36 +20,12 @@ import pathlib
 import re
 import requests, urllib3
 import sys
+import io
 import logging as log
 import time
 import xml.etree.ElementTree as XML
 requests.packages.urllib3.disable_warnings()
-log.basicConfig(level=log.DEBUG)
-# class LogContext:
-#     def __init__(self, message):
-#         self.message = message
-
-#     def __enter__(self):
-#         log.info(self.message)
-
-#     def __exit__(self, exc_type, exc_value, traceback):
-#         if exc_type is not None:
-#             log.error(f"{self.message}: {exc_type.__name__} - {exc_value}")
-#         else:
-#             log.info(f"{self.message} completed successfully.")
-
-#     def status(self, status_message):
-#         log.info(f"{self.message}: {status_message}")
-
-#     def success(self, success_message=None):
-#         if success_message is None:
-#             success_message = f"{self.message} completed successfully."
-#         log.info(success_message)
-
-#     def failure(self, failure_message=None):
-#         if failure_message is None:
-#             failure_message = f"{self.message} failed."
-#         log.error(failure_message)
+log.basicConfig(level=log.ERROR)
  
 class LogContext:
     def __init__(self, message):
@@ -85,6 +61,19 @@ class Drone():
 
 		except Exception as e:
 			log.error(e.args[0])
+			exit()
+	
+	def download(self, remote_file):
+		try:
+			sftp = self.ssh.open_sftp()
+			local_file = os.path.basename(remote_file)
+			sftp.get(remote_file, local_file)
+			sftp.close()
+			return local_file
+
+		except Exception as e:
+			log.error(e)
+			self.close()
 			exit()
 
 	def upload(self, local_file):
@@ -215,7 +204,7 @@ class Nessus:
 			"username": username,
 			"password": password
 		}
-		self.get_auth()
+		#self.get_auth()
 
 		if policy_file: 
 			self.policy_file = policy_file.read()
@@ -235,6 +224,48 @@ class Nessus:
 
 		if scan_file:
 			self.scan_file = scan_file
+	def upload_script(self):
+			with LogContext("Uploading Verify Script and csv file") as p:
+				try:
+					drone = Drone(self.drone, self.username, self.password)
+					csv_file = f"{self.project_name}.csv"
+					script = "nmb.py"
+					os.path.isfile(csv_file)
+					p.success("CSV file found")
+					drone.upload(script)
+					drone.upload(csv_file)
+					drone.close()
+
+				except Exception as e:
+					log.error(e.args[0])
+					exit()
+	def execute_script(self):
+			with LogContext("Executing Verify Script") as p:
+				try:
+					drone = Drone(self.drone, self.username, self.password)
+					
+					cmd = f"sudo python3 /tmp/nmb.py /tmp/{self.project_name}.csv"
+					stdout_str = drone.execute(cmd)
+					print(stdout_str)
+					drone.close()
+
+				except Exception as e:
+					log.error(e.args[0])
+					exit()
+	def evidence_download(self):
+		with LogContext("Downloading Evidence") as p:
+				try:
+					drone = Drone(self.drone, self.username, self.password)
+					remote_file = f"/home/{username}/evidence.zip"
+					local_file = drone.download(remote_file)
+					drone.close()
+
+					p.success()
+
+				except Exception as e:
+					log.error(e.args[0])
+					exit()
+
 
 	# Auth handlers
 	def get_auth(self, verbose=True):
@@ -439,6 +470,7 @@ class Nessus:
 		try:
 			response = requests.get(self.url + "/scans?folder_id=3", headers=self.token_auth, verify=False)
 			scans = json.loads(response.text)["scans"]
+			
 			if scans == None:
 				return
 
@@ -447,7 +479,7 @@ class Nessus:
 					return scan
 		
 		except Exception as e:
-			log.error()
+			log.error("Could not get scan info")
 			exit()
 
 	def scan_action(self, action):
@@ -485,18 +517,22 @@ class Nessus:
 		try:
 			# get scan id
 			scan_id = self.get_scan_info()["id"]
+			template_id = "Vulnerabilites By Plugin"
+			# nessus_version = requests.get(self.url + "/server/properties", headers=self.token_auth, verify=False)
+			# version_info = nessus_version.json()
+			# ui_version = version_info.get("nessus_ui_version")
+			# if re.match(r"^8(\.|$)", ui_version):
+			# 	template_id = "Vulnerabilites By Plugin" # Detailed vulns by plugin 
+			# 	# 214
+			# else:
+############# Removed the below code as the url is different between nessus 8 and nessus 10 but the template ID is the same
+			# response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
+			# templates = json.loads(response.text)
+			# for template in templates:
+			# 	if template["name"] == "Complete List of Vulnerabilities by Host":
+			# 		template_id = template["id"]
+			# 		break	
 
-			# get html template id
-			response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
-			templates = json.loads(response.text)
-			template_id = None
-			for template in templates:
-				if template["name"] == "Complete List of Vulnerabilities by Host":
-					template_id = template["id"]
-					break
-
-			if template_id is None:
-				raise Exception("HTML template not found")
 
 			# format handlers
 			formats = {
@@ -506,6 +542,7 @@ class Nessus:
 				"html": {
 					"format": "html",
 					"template_id": template_id,
+					"chapters": "vuln_by_plugin",
 					"csvColumns": {},
 					"formattingOptions": {},
 					"extraFilters": {
@@ -547,37 +584,39 @@ class Nessus:
 					}
 				}
 			}
+			if template_id is not None:
 
-			for k,v in formats.items():
-				with LogContext(f"Exporting {k} file") as p:
-					# get scan token
-					data = v
-					response = requests.post(self.url + "/scans/" + str(scan_id) + "/export", headers=self.token_auth, json=data, verify=False)
-					if response.status_code != 200:
-						raise Exception(f"Exporting {k} file failed with status code {response.status_code}")
-					scan_token = json.loads(response.text)["token"]
+				for k,v in formats.items():
+				
+					with LogContext(f"Exporting {k} file") as p:
+						# get scan token
+						data = v
+						response = requests.post(self.url + "/scans/" + str(scan_id) + "/export", headers=self.token_auth, json=data, verify=False)
+						if response.status_code != 200:
+							raise Exception(f"Exporting {k} file failed with status code {response.status_code}")
+						scan_token = json.loads(response.text)["token"]
 
-					# download file
-					while True:
-						response = requests.get(self.url + "/tokens/" + scan_token + "/download", headers=self.token_auth, verify=False)
-						if "not ready" in response.text:
-							time.sleep(5)
+						# download file
+						while True:
+							response = requests.get(self.url + "/tokens/" + scan_token + "/download", headers=self.token_auth, verify=False)
+							if "not ready" in response.text:
+								time.sleep(5)
 
-						elif response.status_code == 200:
-							file_path = os.path.join(self.output_folder, self.project_name + f".{k}")
-							open(file_path, "wb").write(response.content)
-							p.success(f"Done. Scan file exported to \"{file_path}\"")
-							break
+							elif response.status_code == 200:
+								file_path = os.path.join(self.output_folder, self.project_name + f".{k}")
+								open(file_path, "wb").write(response.content)
+								p.success(f"Done. Scan file exported to \"{file_path}\"")
+								break
 
-						else:
-							raise Exception(f"Downloading {k} file failed with status code {response.status_code}")
+							else:
+								raise Exception(f"Downloading {k} file failed with status code {response.status_code}")
 
-			return self.project_name + ".nessus"
+				return self.project_name + ".nessus"
 
 		except Exception as e:
 			with LogContext("Exporting scan failed") as p:
-				p.failure(str(e))
-			exit()
+				p.failure(e.args[0])
+				exit()
 	def analyze_results(self, scan_file):
 			with LogContext("Analyzing results") as p:
 				try:
@@ -610,7 +649,7 @@ class Nessus:
 		self.analyze_results(scan_file)
 
 	def trigger(self):
-		#self.exclude_targets()
+		self.exclude_targets()
 		self.update_settings()
 		self.import_policies()
 		self.create_scan(False)
@@ -631,9 +670,16 @@ class Nessus:
 		self.analyze_results(scan_file)
 
 	def export(self):
+		self.export_scan()
 		scan_file = self.export_scan()
 		self.analyze_results(scan_file)
 
+	def manual(self):
+		#self.export_scan()
+		self.upload_script()
+		self.execute_script()
+		self.evidence_download()
+		
 def get_creds():
 	username = input("username: ").rstrip()
 	password = getpass.getpass("password: ")
@@ -642,15 +688,16 @@ def get_creds():
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(
-		usage = "deployer.py nessus [OPTIONS]",
+		usage = "deployer.py [OPTIONS]",
 		formatter_class = argparse.RawTextHelpFormatter,
 		epilog = "Examples:\n" \
-				 "deployer.py nessus -d storm -c myclient -m deploy -p mypolicy.nessus -t targets.txt\n" \
-				 "deployer.py nessus -d localhost -c myclient -m trigger -p custompolicy.nessus -t targets.txt\n" \
-				 "deployer.py nessus -d 10.88.88.101 -c myclient -m pause\n" \
-				 "deployer.py nessus -d strange -c myclient -m resume -o /home/drone/Downloads"
+				 "deployer.py -d storm -c myclient -m deploy -p mypolicy.nessus -t targets.txt\n" \
+				 "deployer.py -d localhost -c myclient -m trigger -p custompolicy.nessus -t targets.txt\n" \
+				 "deployer.py -d 10.88.88.101 -c myclient -m pause\n" \
+				 "deployer.py -d strange -c myclient -m resume -o /home/drone/Downloads"
+				 "deployer.py -d ironman -m manual [--msf] [-q]"
 	)
-	parser.add_argument("-m", "--mode", required=True, choices=["deploy","trigger","launch","pause","resume","monitor","export","analyze"], help="" \
+	parser.add_argument("-m", "--mode", required=True, choices=["deploy","trigger","launch","pause","resume","monitor","export","analyze", "manual"], help="" \
 		"choose mode to run Nessus:\n" \
 		"deploy: update settings, upload policy file, upload targets file, launch scan, monitor scan, export results, analyze results\n" \
 		"trigger: update settings, upload policy file, upload targets files\n" \
@@ -659,7 +706,8 @@ if __name__ == "__main__":
 		"resume: resume scan, export results, analyze results\n" \
 		"monitor: monitor scan\n" \
 		"export: export scan results, analyze results\n" \
-		"analyze: analyze scan file (output exploitable findings, ports matrix, and web directories found)"
+		"analyze: analyze scan file (output exploitable findings, ports matrix, and web directories found)\n"
+		"manual: perform simple nmap scans and manual finding verification"
 	)
 	parser.add_argument("-d", "--drone", required=True, help="drone name or IP")
 	parser.add_argument("-c", "--client-name", dest="client", required=False, help="client name or project name (used to name the scan and output files)")
@@ -676,7 +724,6 @@ if __name__ == "__main__":
 			log.error("You must provide a scan file (-s)")
 			exit()
 		username, password = get_creds()
-
 	else:
 		if args.drone is None or args.client is None:
 			log.error("You must provide the drone name (-d) and the client name (-c)")
@@ -735,4 +782,8 @@ if __name__ == "__main__":
 
 	elif args.mode == "analyze":
 		log.info("Analyzing scan results")
-		nessus.analyze_results()		
+		nessus.analyze_results()
+
+	elif args.mode == "manual":
+		log.info("Performing manual testing")
+		nessus.manual()			
