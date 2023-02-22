@@ -751,22 +751,22 @@ class Nessus:
             # get scan id
             scan_id = self.get_scan_info()["id"]
             template_id = ""
-            nessus_version = requests.get(self.url + "/server/properties", headers=self.token_auth, verify=False)
-            version_info = nessus_version.json()
-            ui_version = version_info.get("nessus_ui_version")
-            if re.match(r"^8(\.|$)", ui_version):
-                template_id = "Vulnerabilites By Plugin" # Detailed vulns by plugin 
-                # 214
-            else:
+            # nessus_version = requests.get(self.url + "/server/properties", headers=self.token_auth, verify=False)
+            # version_info = nessus_version.json()
+            # ui_version = version_info.get("nessus_ui_version")
+            # if re.match(r"^8(\.|$)", ui_version):
+            #     template_id = "Vulnerabilites By Plugin" # Detailed vulns by plugin 
+            #     # 214
+            # else:
                 
 # ############ Removed the below code as the url is different between nessus 8 and nessus 10 but the template ID is the same
-                response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
-                templates = json.loads(response.text)
-                for template in templates:
-                    if template["name"] == "Detailed Vulnerabilites By Plugin":
-                        template_id = template["id"]
-                        print(template_id)
-                        break	
+            response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
+            templates = json.loads(response.text)
+            for template in templates:
+                if template["name"] == "Detailed Vulnerabilites By Plugin":
+                    template_id = template["id"]
+                    print(template_id)
+                    break	
 
 
             # format handlers
