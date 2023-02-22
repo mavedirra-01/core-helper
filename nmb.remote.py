@@ -437,7 +437,7 @@ class Nessus:
             "password": password
         }
         if not Nessus.auth:
-            Nessus.get_auth()
+            Nessus.get_auth(self)
 
         if policy_file: 
             self.policy_file = policy_file.read()
