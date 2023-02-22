@@ -763,7 +763,7 @@ class Nessus:
             response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
             templates = json.loads(response.text)
             for template in templates:
-                if template["name"] == "Vulnerabilites By Plugin":
+                if template["name"] == "Complete List of Vulnerabilities by Host":
                     template_id = template["id"]
                     print(template_id)
                     break	
