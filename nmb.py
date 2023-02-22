@@ -47,6 +47,12 @@ class PluginConfig:
         self.sshCiphers = "--script ssh2-enum-algos"
         self.sslCiphers = "--script ssl-enum-ciphers"
         self.plugins = {
+    "splunk_version": {
+        "ids": [
+            "164076", "171550", "164329"
+        ],
+        "option": self.serviceVersion
+    },
     "custom_snmp_check": {
         "ids": [
             "41028"
@@ -85,7 +91,7 @@ class PluginConfig:
     },
     "esxi_version": {
         "ids": [
-            "13847"
+            "13847", "168828"
         ],
         "option": self.serviceVersion
     },
