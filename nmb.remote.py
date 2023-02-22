@@ -308,16 +308,16 @@ class Lackey:
                 print(c.blue,f"Testing {ip}:{port} for {name}")
                 if execute_custom and remote:
                     cmd = f'{script} {ip} '
-                    content = drone.execute(cmd)
+                    stdin, stdout, stderr = drone.execute(cmd)
                     with open(output_file, "w") as f:
-                        f.write(content)
+                        f.write(stdout.read().decode('utf-8'))
                     with open(output_file, "r") as f:
                         content = f.read()
                 if execute_nmap and remote:
                     cmd = f'{nmap} {script} -p {port} {ip} '
-                    content = drone.execute(cmd)
+                    stdin, stdout, stderr = drone.execute(cmd)
                     with open(output_file, "w") as f:
-                        f.write(content)
+                        f.write(stdout.read().decode('utf-8'))
                     with open(output_file, "r") as f:
                         content = f.read()
                 
