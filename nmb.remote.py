@@ -303,7 +303,7 @@ class Lackey:
             c = Colours()
             
             try:
-                output_file = "evidence/{}.txt".format(name)
+                output_file = "{}.txt".format(name)
                 drone = Drone(self.drone, self.username, self.password)
                 print(c.blue,f"Testing {ip}:{port} for {name}")
                 if execute_custom and remote:
