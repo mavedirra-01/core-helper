@@ -302,12 +302,12 @@ class Lackey:
             nmap = "nmap -T4"
             c = Colours()
             try:
+                output_file = f"evidence/{name.replace(' ', '_')}.txt"
                 drone = Drone(self.drone, self.username, self.password)
                 print(c.blue,f"Testing {ip}:{port} for {name}")
                 if execute_custom and remote:
                     cmd = f'{script} {ip} '
                     content = drone.execute(cmd)
-                    output_file = f"evidence/{name.replace(' ', '_')}.txt"
                     with open(output_file, "w") as f:
                         f.write(content)
                     with open(output_file, "r") as f:
@@ -315,7 +315,6 @@ class Lackey:
                 if execute_nmap and remote:
                     cmd = f'{nmap} {script} -p {port} {ip} '
                     content = drone.execute(cmd)
-                    output_file = f"evidence/{name.replace(' ', '_')}.txt"
                     with open(output_file, "w") as f:
                         f.write(content)
                     with open(output_file, "r") as f:

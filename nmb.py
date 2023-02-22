@@ -19,11 +19,11 @@ def execute_checks(ip, port, name, script, execute_custom=False, execute_nmap=Fa
     c = Colours()
     print(c.blue,f"Testing {ip}:{port} for {name}")
     try:
+        output_file = f"{name.replace(' ', '_')}.txt"
         if execute_custom:
             output = subprocess.run([f'{script} {ip} '], capture_output=True, shell=True, check=True)
         if execute_nmap:
             output = subprocess.run([f'{nmap} {script} -p {port} {ip} '], capture_output=True, shell=True, check=True)
-        output_file = f"{name.replace(' ', '_')}.txt"
         with open(output_file, "w") as f:
             f.write(output.stdout.decode())
         with open(output_file, "r") as f:
