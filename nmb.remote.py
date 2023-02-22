@@ -240,7 +240,7 @@ class Lackey:
                     # Append the IP and port to the respective lists
                     ips.append(ip)
                     ports.append(port)
-        ips = list(set(ips))
+        #ips = list(set(ips))
         return name, ips, ports
 
     def verify_scans(self, plugin_id, script, execute_custom=False, execute_nmap=False, remote=True):
@@ -262,7 +262,6 @@ class Lackey:
                     elif status == "unknown":
                         print(c.yellow,"Host may be down, unable to verify -", name)
                         valid_scan_found = True
-                        break
                     else:
                         print(c.green,"Finding:", name, "Verified")
                         # Set the flag variable to indicate that a valid scan has been found
@@ -1053,4 +1052,5 @@ if __name__ == "__main__":
 
     elif args.mode == "manual":
         log.info("Performing manual testing")
+        Nessus.auth=True
         execute.run_all()		
