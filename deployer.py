@@ -245,8 +245,8 @@ class Nessus:
 					drone = Drone(self.drone, self.username, self.password)
 					
 					cmd = f"sudo python3 /tmp/nmb.py /tmp/{self.project_name}.csv"
-					stdout_str = drone.execute(cmd)
-					print(stdout_str)
+					drone.execute(cmd)
+
 					drone.close()
 
 				except Exception as e:
