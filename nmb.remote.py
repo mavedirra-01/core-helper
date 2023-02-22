@@ -310,15 +310,15 @@ class Lackey:
                     content = drone.execute(cmd)
                     with open(output_file, "w") as f:
                         f.write(content)
-                    with open(output_file, "r") as f:
-                        content = f.read()
+                    # with open(output_file, "r") as f:
+                    #     content = f.read()
                 if execute_nmap and remote:
                     cmd = f'{nmap} {script} -p {port} {ip} '
                     content = drone.execute(cmd)
                     with open(output_file, "w") as f:
                         f.write(content)
-                    with open(output_file, "r") as f:
-                        content = f.read()
+                    # with open(output_file, "r") as f:
+                    #     content = f.read()
                 
                 # if execute_custom and local:
                 #     content = subprocess.run([f'{nmap} {script} -p {port} {ip} '], capture_output=True, shell=True, check=True)
