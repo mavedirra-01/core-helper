@@ -750,7 +750,7 @@ class Nessus:
         try:
             # get scan id
             scan_id = self.get_scan_info()["id"]
-            # template_id = "214"
+            template_id = ""
 #             nessus_version = requests.get(self.url + "/server/properties", headers=self.token_auth, verify=False)
 #             version_info = nessus_version.json()
 #             ui_version = version_info.get("nessus_ui_version")
@@ -849,6 +849,7 @@ class Nessus:
             with LogContext("Exporting scan failed") as p:
                 p.failure(e.args[0])
                 exit()
+                
     def analyze_results(self, scan_file):
             with LogContext("Analyzing results") as p:
                 try:
