@@ -28,9 +28,9 @@ def execute_checks(ip, port, name, script, execute_custom=False, execute_nmap=Fa
             f.write(output.stdout.decode())
         with open(output_file, "r") as f:
             content = f.read()
-        if "Host seems down" in content or "0 hosts up" in content:
+        if "Host seems down" in content or "0 hosts up" in content or "closed" in content:
             return "down"
-        elif "filtered" in content or "closed" in content:
+        elif "filtered" in content :
             return "unknown"
         if "SNMP request timeout" in content or "request timed out" in content:
             return "down"
@@ -178,8 +178,8 @@ class Lackey:
                     break
             elif status == "unknown":
                 print(c.yellow,"Host may be down, unable to verify -", name)
-                valid_scan_found = True
-                break
+                # valid_scan_found = True
+                # break
             else:
                 print(c.green,"Finding:", name, "Verified")
                 # Set the flag variable to indicate that a valid scan has been found
