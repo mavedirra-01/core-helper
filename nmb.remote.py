@@ -12,9 +12,10 @@ import csv
 import io
 import logging as log
 import time
+import zipfile
 import xml.etree.ElementTree as XML
 requests.packages.urllib3.disable_warnings()
-log.basicConfig(level=log.ERROR)
+log.basicConfig(level=log.INFO)
 # import xml.etree.ElementTree as ET
 import subprocess
 class Colours:
@@ -101,40 +102,9 @@ class Drone():
         except:
             self.close()
             exit()
-
-    def execute_checks(self, ip, port, name, script, execute_custom=False, execute_nmap=False, remote=True, local=False):
-        nmap = "nmap -T4"
-        c = Colours()
-        drone = Drone(self.drone, self.username, self.password)
-        print(c.blue,f"Testing {ip}:{port} for {name}")
-        try:
-            if execute_custom and remote:
-                output = drone.execute(f'{script} {ip} ')
-            if execute_nmap and remote:
-                output = drone.execute(f'{nmap} {script} -p {port} {ip} ')
-            # if execute_custom and local:
-            #     output = drone.execute([f'{script} {ip} '], capture_output=True, shell=True, check=True)
-            # if execute_nmap and local == False:
-            #     output = drone.execute([f'{nmap} {script} -p {port} {ip} '], capture_output=True, shell=True, check=True)
-            output_file = f"{name.replace(' ', '_')}.txt"
-            with open(output_file, "w") as f:
-                f.write(output.stdout.decode())
-            with open(output_file, "r") as f:
-                content = f.read()
-            if "Host seems down" in content or "0 hosts up" in content:
-                return "down"
-            elif "filtered" in content or "closed" in content:
-                return "unknown"
-            if "SNMP request timeout" in content or "request timed out" in content:
-                return "down"
-            else:
-                return "up"
-        except subprocess.CalledProcessError as e:
-            print(f"Error occurred during execution: {e}")
         
     def close(self):
         self.ssh.close()
-
 
 
 class PluginConfig:
@@ -233,8 +203,16 @@ class PluginConfig:
     
 
 class Lackey:
-    def __init__(self, file_path):
+    def __init__(self, file_path, drone, username, password, mode):
         self.file_path = file_path
+        self.drone = drone
+        self.plugin_config = PluginConfig()
+        self.username = username
+        self.password = password
+        self.make_evidence = "evidence"
+        if not os.path.exists(self.make_evidence):
+            os.makedirs(self.make_evidence)
+        
 
     def parse_user_csv(self, plugin_ids):
         ips = []
@@ -254,49 +232,97 @@ class Lackey:
         ips = list(set(ips))
         return name, ips, ports
 
-    def verify_scans(self, plugin_id, script, execute_custom=False, execute_nmap=False):
+    def verify_scans(self, plugin_id, script, execute_custom=False, execute_nmap=False, remote=True):
         c = Colours()
         name, ips, ports = self.parse_user_csv(plugin_id)
         valid_scan_found = False
-        for i in range(len(ips)):
-            if valid_scan_found:
-                break
-            ip = ips[i]
-            port = ports[i]
-            status = Drone.execute_checks(ip, port, name, script, execute_custom, execute_nmap)
-            if status == "down":
-                if i == len(ips) - 1:
-                    print(c.red,"Error: All IP addresses are down -", name)
-                    break
-            elif status == "unknown":
-                print(c.yellow,"Host may be down, unable to verify -", name)
-                valid_scan_found = True
-                break
-            else:
-                print(c.green,"Finding:", name, "Verified")
-                # Set the flag variable to indicate that a valid scan has been found
-                valid_scan_found = True
-                break
-        
-    
-
-class Grunt:
-    def __init__(self, file_path):
-        self.lackey = Lackey(file_path)
-        self.plugin_config = PluginConfig()
-    
+        with LogContext("Verifying IP addresses") as p:
+            try:
+                for i in range(len(ips)):
+                    if valid_scan_found:
+                        break
+                    ip = ips[i]
+                    port = ports[i]
+                    status = self.execute_checks(ip, port, name, script, execute_custom, execute_nmap, remote)
+                    if status == "down":
+                        if i == len(ips) - 1:
+                            print(c.red,"Error: All IP addresses are down -", name)
+                            break
+                    elif status == "unknown":
+                        print(c.yellow,"Host may be down, unable to verify -", name)
+                        valid_scan_found = True
+                        break
+                    else:
+                        print(c.green,"Finding:", name, "Verified")
+                        # Set the flag variable to indicate that a valid scan has been found
+                        valid_scan_found = True
+                        break
+            except Exception as e:
+                    log.error(e.args[0])
+                    exit()
+                    
     def execute_plugin(self, plugin_name):
         plugin_id = self.plugin_config.plugins[plugin_name]["ids"]
         script = self.plugin_config.plugins[plugin_name]["option"]
         if plugin_name.startswith("custom"):
-            self.lackey.verify_scans(plugin_id, script, execute_custom=True, remote=True)
+            self.verify_scans(plugin_id, script, execute_custom=True, remote=True)
         else:
-            self.lackey.verify_scans(plugin_id, script, execute_nmap=True, remote=True)
+            self.verify_scans(plugin_id, script, execute_nmap=True, remote=True)
 
     def run_all(self):
         for plugin_name in self.plugin_config.plugins.keys():
             self.execute_plugin(plugin_name)
+    
+    def zip_evidence(self):
+        directory = self.make_evidence
+        zip_name = "evidence.zip"
+        zip_file = zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED)
+        print("Zipping evidence ...")
+        for file_name in os.listdir(directory):
+        # Ignore subdirectories
+            if not os.path.isdir(file_name):
+            # Add the file to the zip file
+                zip_file.write(os.path.join(directory, file_name), file_name)
+        zip_file.close()
+            
+            
+    def execute_checks(self, ip, port, name, script, execute_custom=False, execute_nmap=False, remote=True, local=False):
+        with LogContext("Analyzing results") as p:
+            nmap = "nmap -T4"
+            c = Colours()
+            try:
+                drone = Drone(self.drone, self.username, self.password)
+                print(c.blue,f"Testing {ip}:{port} for {name}")
+                if execute_custom and remote:
+                    cmd = f'{script} {ip} '
+                    content = drone.execute(cmd)
+                if execute_nmap and remote:
+                    cmd = f'{nmap} {script} -p {port} {ip} '
+                    content = drone.execute(cmd)
+                
+                if execute_custom and local:
+                    content = subprocess.run([f'{nmap} {script} -p {port} {ip} '], capture_output=True, shell=True, check=True)
+                if execute_nmap and local == False:
+                    content = drone.execute([f'{nmap} {script} -p {port} {ip} '], capture_output=True, shell=True, check=True)
+                output_file = f"evidence/{name.replace(' ', '_')}.txt"
+                with open(output_file, "w") as f:
+                    f.write(content)
+                with open(output_file, "r") as f:
+                    content = f.read()
+                if "Host seems down" in content or "0 hosts up" in content:
+                    return "down"
+                elif "filtered" in content or "closed" in content:
+                    return "unknown"
+                if "SNMP request timeout" in content or "request timed out" in content:
+                    return "down"
+                else:
+                    return "up"
 
+            except Exception as e:
+                p.failure(e.args[0])
+        self.zip_evidence()
+                
+        
 
 
 class Analyzer:
@@ -396,7 +422,7 @@ class Nessus:
             "username": username,
             "password": password
         }
-        #self.get_auth()
+        # self.get_auth()
 
         if policy_file: 
             self.policy_file = policy_file.read()
@@ -416,47 +442,47 @@ class Nessus:
 
         if scan_file:
             self.scan_file = scan_file
-    def upload_script(self):
-            with LogContext("Uploading Verify Script and csv file") as p:
-                try:
-                    drone = Drone(self.drone, self.username, self.password)
-                    csv_file = f"{self.project_name}.csv"
-                    script = "nmb.py"
-                    os.path.isfile(csv_file)
-                    p.success("CSV file found")
-                    drone.upload(script)
-                    drone.upload(csv_file)
-                    drone.close()
+    # def upload_script(self):
+    #         with LogContext("Uploading Verify Script and csv file") as p:
+    #             try:
+    #                 drone = Drone(self.drone, self.username, self.password)
+    #                 csv_file = f"{self.project_name}.csv"
+    #                 script = "nmb.py"
+    #                 os.path.isfile(csv_file)
+    #                 p.success("CSV file found")
+    #                 drone.upload(script)
+    #                 drone.upload(csv_file)
+    #                 drone.close()
 
-                except Exception as e:
-                    log.error(e.args[0])
-                    exit()
-    def execute_script(self):
-            with LogContext("Executing Verify Script") as p:
-                try:
-                    drone = Drone(self.drone, self.username, self.password)
+    #             except Exception as e:
+    #                 log.error(e.args[0])
+    #                 exit()
+    # def execute_script(self):
+    #         with LogContext("Executing Verify Script") as p:
+    #             try:
+    #                 drone = Drone(self.drone, self.username, self.password)
                     
-                    cmd = f"sudo python3 /tmp/nmb.py /tmp/{self.project_name}.csv"
-                    stdout_str = drone.execute(cmd)
-                    print(stdout_str)
-                    drone.close()
+    #                 cmd = f"sudo python3 /tmp/nmb.py /tmp/{self.project_name}.csv"
+    #                 stdout_str = drone.execute(cmd)
+    #                 print(stdout_str)
+    #                 drone.close()
 
-                except Exception as e:
-                    log.error(e.args[0])
-                    exit()
-    def evidence_download(self):
-        with LogContext("Downloading Evidence") as p:
-                try:
-                    drone = Drone(self.drone, self.username, self.password)
-                    remote_file = f"/home/{username}/evidence.zip"
-                    local_file = drone.download(remote_file)
-                    drone.close()
+    #             except Exception as e:
+    #                 log.error(e.args[0])
+    #                 exit()
+    # def evidence_download(self):
+    #     with LogContext("Downloading Evidence") as p:
+    #             try:
+    #                 drone = Drone(self.drone, self.username, self.password)
+    #                 remote_file = f"/home/{username}/evidence.zip"
+    #                 local_file = drone.download(remote_file)
+    #                 drone.close()
 
-                    p.success()
+    #                 p.success()
 
-                except Exception as e:
-                    log.error(e.args[0])
-                    exit()
+    #             except Exception as e:
+    #                 log.error(e.args[0])
+    #                 exit()
 
 
     # Auth handlers
@@ -832,6 +858,7 @@ class Nessus:
 
     # Mode handlers
     def deploy(self):
+        self.get_auth()
         self.exclude_targets()
         self.update_settings()
         self.import_policies()
@@ -841,27 +868,32 @@ class Nessus:
         self.analyze_results(scan_file)
 
     def trigger(self):
+        self.get_auth()
         self.exclude_targets()
         self.update_settings()
         self.import_policies()
         self.create_scan(False)
 
     def launch(self):
+        self.get_auth()
         self.scan_action("launch")
         self.monitor_scan()
         scan_file = self.export_scan()
         self.analyze_results(scan_file)
 
     def pause(self):
+        self.get_auth()
         self.scan_action("pause")
 
     def resume(self):
+        self.get_auth()
         self.scan_action("resume")
         self.monitor_scan()
         scan_file = self.export_scan()
         self.analyze_results(scan_file)
 
     def export(self):
+        self.get_auth()
         self.export_scan()
         scan_file = self.export_scan()
         self.analyze_results(scan_file)
@@ -902,15 +934,31 @@ if __name__ == "__main__":
     parser.add_argument("-e", "--exclude-file", dest="exclude_file", required=False, help="exclude targets file", type=argparse.FileType('r'))
     parser.add_argument("-o", "--output-path", dest="output", required=False, help="output path to store exported files", type=pathlib.Path, default=os.getcwd())
     parser.add_argument("-s", "--scan-file", dest="scan_file", required=False, help="scan results file")
-    parser.add_argument("file", type=str, help="Path/to/nessus_scan_results.csv")
+    parser.add_argument("-f ", "--csv-file", dest="file", required=False, help="Path/to/nessus_scan_results.csv")
     args = parser.parse_args()
-    
+    c = Colours()
     # Check args requirements for each mode
     if args.mode == "analyze":
         if not args.scan_file:
             log.error("You must provide a scan file (-s)")
             exit()
         username, password = get_creds()
+        
+        
+    if args.mode == "manual":
+        if not args.file:
+            log.error("You must provide a csv file (-f)")
+            exit()
+        if not args.file.endswith(".csv"):
+            print(c.red,"Error: The file must be of type .csv")
+            exit()
+        if os.path.isfile(args.file):
+            print(c.green,"File exists:", args.file)
+        else:
+            print(c.red,"File does not exist:", args.file)
+            exit()
+        username, password = get_creds()
+        
     else:
         if args.drone is None or args.client is None:
             log.error("You must provide the drone name (-d) and the client name (-c)")
@@ -926,6 +974,13 @@ if __name__ == "__main__":
         username, password = get_creds()
 
     # Initialize nessus
+    execute = Lackey(
+        drone=args.drone,
+        username=username,
+        password=password,
+        file_path=args.file,
+        mode=args.mode
+    )
     nessus = Nessus(
         drone=args.drone,
         username=username,
@@ -938,7 +993,8 @@ if __name__ == "__main__":
         exclude_file=args.exclude_file,
         output_folder=args.output
     )
-
+    
+    
     # Mode handler
     if args.mode == "deploy":
         log.info("Deploying nessus")
@@ -973,5 +1029,4 @@ if __name__ == "__main__":
 
     elif args.mode == "manual":
         log.info("Performing manual testing")
-        execute = Grunt(args.file)
         execute.run_all()		

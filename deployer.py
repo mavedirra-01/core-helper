@@ -204,7 +204,7 @@ class Nessus:
 			"username": username,
 			"password": password
 		}
-		#self.get_auth()
+		self.get_auth()
 
 		if policy_file: 
 			self.policy_file = policy_file.read()
