@@ -268,7 +268,7 @@ class Lackey:
                         valid_scan_found = True
                         break
             except Exception as e:
-                    log.error(e.args[0])
+                    p.error(e.args[0])
                     exit()
                     
     def execute_plugin(self, plugin_name):
