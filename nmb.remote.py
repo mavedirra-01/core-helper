@@ -420,6 +420,7 @@ class Analyzer:
         pass
 
 class Nessus:
+    auth = None
     def __init__(self, drone, username, password, mode, project_name, policy_file, targets_file, scan_file, exclude_file, output_folder):
         self.output_folder = output_folder
         self.drone = drone
@@ -435,7 +436,7 @@ class Nessus:
             "username": username,
             "password": password
         }
-        if not Nessus.get_auth:
+        if not Nessus.auth:
             Nessus.get_auth()
 
         if policy_file: 
