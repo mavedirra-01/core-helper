@@ -301,8 +301,9 @@ class Lackey:
         with LogContext("Analyzing results") as p:
             nmap = "nmap -T4"
             c = Colours()
+            output_file = f"{name}.txt"
             try:
-                output_file = f"evidence/{name.replace(' ', '_')}.txt"
+                
                 drone = Drone(self.drone, self.username, self.password)
                 print(c.blue,f"Testing {ip}:{port} for {name}")
                 if execute_custom and remote:
