@@ -314,6 +314,7 @@ class Lackey:
                     #     content = f.read()
                 if execute_nmap and remote:
                     cmd = f'{nmap} {script} -p {port} {ip} '
+                    print(cmd)
                     content = drone.execute(cmd)
                     with open(output_file, "w") as f:
                         f.write(content)
