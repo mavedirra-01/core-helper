@@ -261,14 +261,15 @@ class Lackey:
                             break
                     elif status == "unknown":
                         print(c.yellow,"Host may be down, unable to verify -", name)
-                        valid_scan_found = True
+                        # valid_scan_found = True
+                        # break
                     else:
                         print(c.green,"Finding:", name, "Verified")
                         # Set the flag variable to indicate that a valid scan has been found
                         valid_scan_found = True
                         break
             except Exception as e:
-                    p.error(e.args[0])
+                    p.failure(e.args[0])
                     exit()
                     
     def execute_plugin(self, plugin_name):
