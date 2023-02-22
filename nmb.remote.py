@@ -51,12 +51,15 @@ class LogContext:
             self.success()    
 
 class Drone():
+    ssh = None  # class attribute to store the SSH connection
+
     def __init__(self, hostname, username, password):
         try:
-            self.ssh = paramiko.SSHClient()
-            self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            self.ssh.connect(hostname=hostname, username=username, password=password)
-            self.ssh.exec_command('export TERM=xterm')
+            if not Drone.ssh:  # if no SSH connection exists, create one
+                Drone.ssh = paramiko.SSHClient()
+                Drone.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                Drone.ssh.connect(hostname=hostname, username=username, password=password)
+                Drone.ssh.exec_command('export TERM=xterm')
 
         except Exception as e:
             log.error(e.args[0])
@@ -64,7 +67,7 @@ class Drone():
     
     def download(self, remote_file):
         try:
-            sftp = self.ssh.open_sftp()
+            sftp = Drone.ssh.open_sftp()
             local_file = os.path.basename(remote_file)
             sftp.get(remote_file, local_file)
             sftp.close()
@@ -79,7 +82,7 @@ class Drone():
         remote_file = "/tmp/" + local_file
         try:
             # upload
-            sftp = self.ssh.open_sftp()
+            sftp = Drone.ssh.open_sftp()
             sftp.put(local_file, remote_file)
             sftp.close()
             return remote_file
@@ -91,7 +94,7 @@ class Drone():
 
     def execute(self, cmd):
         try:
-            stdin, stdout, stderr = self.ssh.exec_command(cmd)
+            stdin, stdout, stderr = Drone.ssh.exec_command(cmd)
             err = stderr.read().decode()
             if err != "" and "TERM" not in err:
                 log.error(err)
@@ -104,7 +107,9 @@ class Drone():
             exit()
         
     def close(self):
-        self.ssh.close()
+        # don't close the SSH connection here
+        pass
+
 
 
 class PluginConfig:
@@ -296,22 +301,28 @@ class Lackey:
                 if execute_custom and remote:
                     cmd = f'{script} {ip} '
                     content = drone.execute(cmd)
+                    output_file = f"evidence/{name.replace(' ', '_')}.txt"
+                    with open(output_file, "w") as f:
+                        f.write(content)
+                    with open(output_file, "r") as f:
+                        content = f.read()
                 if execute_nmap and remote:
                     cmd = f'{nmap} {script} -p {port} {ip} '
                     content = drone.execute(cmd)
+                    output_file = f"evidence/{name.replace(' ', '_')}.txt"
+                    with open(output_file, "w") as f:
+                        f.write(content)
+                    with open(output_file, "r") as f:
+                        content = f.read()
                 
-                if execute_custom and local:
-                    content = subprocess.run([f'{nmap} {script} -p {port} {ip} '], capture_output=True, shell=True, check=True)
-                if execute_nmap and local == False:
-                    content = drone.execute([f'{nmap} {script} -p {port} {ip} '], capture_output=True, shell=True, check=True)
-                output_file = f"evidence/{name.replace(' ', '_')}.txt"
-                with open(output_file, "w") as f:
-                    f.write(content)
-                with open(output_file, "r") as f:
-                    content = f.read()
-                if "Host seems down" in content or "0 hosts up" in content:
+                # if execute_custom and local:
+                #     content = subprocess.run([f'{nmap} {script} -p {port} {ip} '], capture_output=True, shell=True, check=True)
+                # if execute_nmap and local == False:
+                #     content = drone.execute([f'{nmap} {script} -p {port} {ip} '], capture_output=True, shell=True, check=True)
+                
+                if "Host seems down" in content or "0 hosts up" in content or "closed" in content:
                     return "down"
-                elif "filtered" in content or "closed" in content:
+                elif "filtered" in content:
                     return "unknown"
                 if "SNMP request timeout" in content or "request timed out" in content:
                     return "down"
@@ -320,7 +331,9 @@ class Lackey:
 
             except Exception as e:
                 p.failure(e.args[0])
-        self.zip_evidence()
+        # self.zip_evidence()
+        drone.close()
+        
                 
         
 
