@@ -435,7 +435,8 @@ class Nessus:
             "username": username,
             "password": password
         }
-        # self.get_auth()
+        if not Nessus.get_auth:
+            Nessus.get_auth()
 
         if policy_file: 
             self.policy_file = policy_file.read()
@@ -871,7 +872,7 @@ class Nessus:
 
     # Mode handlers
     def deploy(self):
-        self.get_auth()
+        # self.get_auth()
         self.exclude_targets()
         self.update_settings()
         self.import_policies()
@@ -881,35 +882,35 @@ class Nessus:
         self.analyze_results(scan_file)
 
     def trigger(self):
-        self.get_auth()
+        # self.get_auth()
         self.exclude_targets()
         self.update_settings()
         self.import_policies()
         self.create_scan(False)
 
     def launch(self):
-        self.get_auth()
+        # self.get_auth()
         self.scan_action("launch")
         self.monitor_scan()
         scan_file = self.export_scan()
         self.analyze_results(scan_file)
 
     def pause(self):
-        self.get_auth()
+        # self.get_auth()
         self.scan_action("pause")
 
     def resume(self):
-        self.get_auth()
+        # self.get_auth()
         self.scan_action("resume")
         self.monitor_scan()
         scan_file = self.export_scan()
         self.analyze_results(scan_file)
 
     def export(self):
-        self.get_auth()
+        # self.get_auth()
         self.export_scan()
-        scan_file = self.export_scan()
-        self.analyze_results(scan_file)
+        # scan_file = self.export_scan()
+        # self.analyze_results(scan_file)
         
 def get_creds():
     username = input("username: ").rstrip()
