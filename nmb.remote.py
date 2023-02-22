@@ -120,6 +120,12 @@ class PluginConfig:
         self.sshCiphers = "--script ssh2-enum-algos"
         self.sslCiphers = "--script ssl-enum-ciphers"
         self.plugins = {
+    "splunk_version": {
+        "ids": [
+            "164076", "171550", "164329"
+        ],
+        "option": self.serviceVersion
+    },
     "custom_snmp_check": {
         "ids": [
             "41028"
@@ -158,7 +164,7 @@ class PluginConfig:
     },
     "esxi_version": {
         "ids": [
-            "13847"
+            "13847", "168828"
         ],
         "option": self.serviceVersion
     },
@@ -420,7 +426,7 @@ class Analyzer:
         pass
 
 class Nessus:
-    # auth = None
+    auth = None
     def __init__(self, drone, username, password, mode, project_name, policy_file, targets_file, scan_file, exclude_file, output_folder):
         self.output_folder = output_folder
         self.drone = drone
@@ -436,9 +442,9 @@ class Nessus:
             "username": username,
             "password": password
         }
-        # if not Nessus.auth:
-        #     Nessus.get_auth(self)
-        self.get_auth()
+        if not Nessus.auth:
+            Nessus.get_auth(self)
+        # self.get_auth()
         if policy_file: 
             self.policy_file = policy_file.read()
             self.policy_file_name = policy_file.name
