@@ -331,6 +331,8 @@ class Lackey:
                 
                 if "Host seems down" in content or "0 hosts up" in content or "closed" in content:
                     return "down"
+                if not content:
+                    return "down"
                 elif "filtered" in content:
                     return "unknown"
                 if "SNMP request timeout" in content or "request timed out" in content:
