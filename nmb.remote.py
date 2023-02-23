@@ -247,7 +247,6 @@ class Lackey:
         c = Colours()
         name, ips, ports = self.parse_user_csv(plugin_id)
         valid_scan_found = False
-        plugin_name = ''
         with LogContext("Verifying IP addresses") as p:
             try:
                 for i in range(len(ips)):
@@ -255,7 +254,7 @@ class Lackey:
                         break
                     ip = ips[i]
                     port = ports[i]
-                    status = self.execute_checks(ip, port, plugin_name, script, execute_custom, execute_nmap, remote)
+                    status = self.execute_checks(ip, port, name, script, execute_custom, execute_nmap, remote)
                     if status == "down":
                         if i == len(ips) - 1:
                             print(c.red,"Error: All IP addresses are down -", name)
@@ -298,16 +297,16 @@ class Lackey:
         zip_file.close()
             
             
-    def execute_checks(self, ip, port, plugin_name, script, execute_custom=False, execute_nmap=False, remote=True, local=False):
+    def execute_checks(self, ip, port, name, script, execute_custom=False, execute_nmap=False, remote=True, local=False):
         with LogContext("Analyzing results") as p:
             
             nmap = "nmap -T4"
             c = Colours()
             try:
                 drone = Drone(self.drone, self.username, self.password)
-                name = self.plugin_config.plugins[plugin_name]["name"]
-                print(name)
-                output_file = "evidence/{}.txt".format(name.replace("/", "-",).replace(" ", "_"))
+                output_name = self.plugin_config.plugins["name"]
+                print(output_name)
+                output_file = "evidence/{}.txt".format(output_name.replace("/", "-",).replace(" ", "_"))
                 print(c.blue,f"Testing {ip}:{port} for {name}")
                 if execute_custom and remote:
                     cmd = f'{script} {ip} '
@@ -450,8 +449,8 @@ class Nessus:
             "username": username,
             "password": password
         }
-        # if not Nessus.auth:
-        #     Nessus.get_auth(self)
+        if not Nessus.auth:
+            Nessus.get_auth(self)
         # self.get_auth()
         if policy_file: 
             self.policy_file = policy_file.read()
