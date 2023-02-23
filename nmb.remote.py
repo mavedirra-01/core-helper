@@ -302,7 +302,7 @@ class Lackey:
             nmap = "nmap -T4"
             c = Colours()
             try:
-                output_file = "evidence/{}.txt".format(name.replace("/", "-",))
+                output_file = "evidence/{}.txt".format(name.replace("/", "-",).replace(" ", "_"))
                 drone = Drone(self.drone, self.username, self.password)
                 print(c.blue,f"Testing {ip}:{port} for {name}")
                 if execute_custom and remote:
