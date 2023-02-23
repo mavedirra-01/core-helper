@@ -299,14 +299,11 @@ class Lackey:
             
     def execute_checks(self, ip, port, name, script, execute_custom=False, execute_nmap=False, remote=True, local=False):
         with LogContext("Analyzing results") as p:
-            
             nmap = "nmap -T4"
             c = Colours()
             try:
+                output_file = "evidence/{}.txt".format(name.replace("/", "-",).replace(" ", "_"))
                 drone = Drone(self.drone, self.username, self.password)
-                output_name = self.plugin_config.plugins["name"]
-                print(output_name)
-                output_file = "evidence/{}.txt".format(output_name.replace("/", "-",).replace(" ", "_"))
                 print(c.blue,f"Testing {ip}:{port} for {name}")
                 if execute_custom and remote:
                     cmd = f'{script} {ip} '
