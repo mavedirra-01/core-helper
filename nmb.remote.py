@@ -15,7 +15,7 @@ import time
 import zipfile
 import xml.etree.ElementTree as XML
 requests.packages.urllib3.disable_warnings()
-log.basicConfig(level=log.INFO)
+log.basicConfig(level=log.ERROR)
 # import xml.etree.ElementTree as ET
 import subprocess
 class Colours:
