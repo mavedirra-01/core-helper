@@ -309,15 +309,17 @@ class Lackey:
                 if execute_custom and remote:
                     cmd = f'{script} {ip} '
                     stdin, stdout, stderr = drone.execute(cmd)
+                    output = stdout.read().decode('utf-8').strip("'") # remove quotes from output
                     with open(output_file, "w") as f:
-                        f.write(stdout.read().decode('utf-8'))
+                        f.write(output)
                     with open(output_file, "r") as f:
                         content = f.read()
                 if execute_nmap and remote:
                     cmd = f'{nmap} {script} -p {port} {ip} '
                     stdin, stdout, stderr = drone.execute(cmd)
+                    output = stdout.read().decode('utf-8').strip("'") # remove quotes from output
                     with open(output_file, "w") as f:
-                        f.write(stdout.read().decode('utf-8'))
+                        f.write(output)
                     with open(output_file, "r") as f:
                         content = f.read()
                 
