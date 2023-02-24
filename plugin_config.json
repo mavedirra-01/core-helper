@@ -1,0 +1,106 @@
+{
+    "plugins": {
+        "splunk_version": {
+            "ids": [
+                "164076", "171550", "164329"
+            ],
+            "option": "{{serviceVersion}}"
+        },
+        "custom_snmp_check": {
+            "ids": [
+                "41028"
+            ],
+            "option": "snmp-check -v 2c -c public -w"
+        },
+        "custom_ntp_mode6": {
+            "ids": [
+                "97861"
+            ],
+            "option": "ntpq -c rv"
+        },
+        "custom_smb_targets": {
+            "ids": [
+                "57608"
+            ],
+            "option": "crackmapexec smb --gen-relay-list smb_targets"
+        },
+        "tls_version": {
+            "ids": [
+                "104743", "157288"
+            ],
+            "option": "{{sslCiphers}}"
+        },
+        "ssl_cert": {
+            "ids": [
+                "51192", "20007", "57582", "15901"
+            ],
+            "option": "{{sshCiphers}}"
+        },
+        "ssh_ciphers": {
+            "ids": [
+                "70658", "153953", "71049"
+            ],
+            "option": "{{sshCiphers}}"
+        },
+        "esxi_version": {
+            "ids": [
+                "13847", "168828"
+            ],
+            "option": "{{serviceVersion}}"
+        },
+        "vcenter_version": {
+            "ids": [
+                "168746"
+            ],
+            "option": "{{serviceVersion}}"
+        },
+        "php_version": {
+            "ids": [
+                "58987","166901", "161971", "165545"
+            ],
+            "option": "{{serviceVersion}}"
+        },
+        "apache_version": {
+            "ids": [
+                "150280", "153583", "156255", "158900", "161454", "161948", "170113", "153585", "153586"
+            ],
+            "option": "{{serviceVersion}}"
+        },
+        "python_version": {
+            "ids": [
+                "148367"
+            ],
+            "option": "{{serviceVersion}}"
+        },
+        "redis_info": {
+            "ids": [
+                "100634"
+            ],
+            "option": "{{redisInfo}}"
+        },
+        "openssl_version": {
+            "ids": [
+                "152782", "160477", "162420", "148125", "148402", "158974", "144047", "157228", "162721"
+            ],
+            "option": "{{serviceVersion}}"
+        },
+        "tomcat_version": {
+            "ids": [
+                "72692", "95438", "121119", "133845", "66428", "72691", "74247", "74246", "77475", "83764", "88936", "88936", "94578", "96003", "99367", "100681", "103329", "103329", "103698", "103782", "106975", "118035", "12116", "12117", "12118", "121120", "121121", "136770", "138851", "147163", "148405", "151502"
+            ],
+            "option": "{{serviceVersion}}"
+        },
+        "unix_os_version": {
+            "ids": [
+                "33850"
+            ],
+            "option": "{{osVersion}}"
+        },
+        "windows_os_version": {
+            "ids": [
+                "108797"
+            ],
+            "option": "{{osVersion}}"
+        }
+    }
+}

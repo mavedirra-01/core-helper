@@ -2,6 +2,8 @@ import argparse
 import ipaddress
 import getpass
 import json
+import signal
+import msvcrt
 import os
 import paramiko
 import pathlib
@@ -13,11 +15,20 @@ import io
 import logging as log
 import time
 import zipfile
+import subprocess
 import xml.etree.ElementTree as XML
 requests.packages.urllib3.disable_warnings()
 log.basicConfig(level=log.ERROR)
 # import xml.etree.ElementTree as ET
-import subprocess
+## TO DO 
+# allow for local scans with subproccess 
+# use scan file instead of file
+# add metasploit checks
+# add query functionality
+# improve logging and colours
+# fix nessus html template issue
+
+
 class Colours:
     def __init__(self):
         self.green = "\033[32m[+]\033[0m"
@@ -114,109 +125,35 @@ class Drone():
 
 class PluginConfig:
     def __init__(self):
-        self.serviceVersion = "-sC -sV"
-        self.osVersion = "sudo nmap -sC -sV -O"
-        self.sslCert = "--script ssl-cert"
-        self.sshCiphers = "--script ssh2-enum-algos"
-        self.sslCiphers = "--script ssl-enum-ciphers"
-        self.plugins = {
-    "splunk_version": {
-        "ids": [
-            "164076", "171550", "164329"
-        ],
-        "option": self.serviceVersion
-    },
-    "custom_snmp_check": {
-        "ids": [
-            "41028"
-        ],
-        "option": "snmp-check -v 2c -c public -w"
-    },
-    "custom_ntp_mode6": {
-        "ids": [
-            "97861"
-        ],
-        "option": "ntpq -c rv"
-    },
-    "custom_smb_targets": {
-        "ids": [
-            "57608"
-        ],
-        "option": "crackmapexec smb --gen-relay-list smb_targets"
-    },
-    "tls_version": {
-        "ids": [
-            "104743", "157288"
-        ],
-        "option": self.sslCiphers
-    },
-    "ssl_cert": {
-        "ids": [
-            '51192', '20007', '57582', '15901'
-        ],
-        "option": self.sslCert
-    },
-    "ssh_ciphers": {
-        "ids": [
-            "70658", "153953", "71049"
-        ],
-        "option": self.sshCiphers
-    },
-    "esxi_version": {
-        "ids": [
-            "13847", "168828"
-        ],
-        "option": self.serviceVersion
-    },
-    "vcenter_version": {
-        "ids": [
-            "168746"
-        ],
-        "option": self.serviceVersion
-    },
-    "php_version": {
-        "ids": [
-            "58987","166901", "161971", "165545"
-        ],
-        "option": self.serviceVersion
-    },
-    "apache_version": {
-        "ids": [
-            "150280", "153583", "156255", "158900", "161454", "161948", "170113", "153585", "153586"
-        ],
-        "option": self.serviceVersion
-    },
-    "openssl_version": {
-        "ids": [
-            "152782", "160477", "162420", "148125", "148402", "158974", "144047", "157228", "162721"
-        ],
-        "option": self.serviceVersion
-    },
-    "tomcat_version": {
-        "ids": [
-            "72692", "95438", "121119", "133845", "66428", "72691", "74247", "74246", "77475", "83764", "88936", "88936", "94578", "96003", "99367", "100681", "103329", "103329", "103698", "103782", "106975", "118035", "12116", "12117", "12118", "121120", "121121", "136770", "138851", "147163", "148405", "151502"
-        ],
-        "option": self.serviceVersion
-    },
-    "unix_os_version": {
-        "ids": [
-            "33850"
-        ],
-        "option": self.osVersion
-    },
-    "windows_os_version": {
-        "ids": [
-            "108797"
-        ],
-        "option": self.osVersion
-    }
-}
+        config_file = "plugin_config.json"
+        with open(config_file) as f:
+            config = json.load(f)
+        
+        self.serviceVersion = config.get('serviceVersion', '-sC -sV')
+        self.osVersion = config.get('osVersion', 'sudo nmap -sC -sV -O')
+        self.sslCert = config.get('sslCert', '--script ssl-cert')
+        self.sshCiphers = config.get('sshCiphers', '--script ssh2-enum-algos')
+        self.sslCiphers = config.get('sslCiphers', '--script ssl-enum-ciphers')
+        self.redisInfo = config.get('redisInfo', '--script redis-info')
+        self.plugins = config.get('plugins', {})
+        for plugin_name, plugin_config in self.plugins.items():
+            if "option" in plugin_config:
+                option = plugin_config["option"]
+                option = option.replace("{{serviceVersion}}", self.serviceVersion)
+                option = option.replace("{{osVersion}}", self.osVersion)
+                option = option.replace("{{sslCert}}", self.sslCert)
+                option = option.replace("{{sshCiphers}}", self.sshCiphers)
+                option = option.replace("{{sslCiphers}}", self.sslCiphers)
+                option = option.replace("{{redisInfo}}", self.redisInfo)
+                plugin_config["option"] = option
     
 
 class Lackey:
     def __init__(self, file_path, drone, username, password, mode):
+        signal.signal(signal.SIGINT, self.signal_handler)
         self.file_path = file_path
         self.drone = drone
+        self.args = parser.parse_args()
         self.plugin_config = PluginConfig()
         self.username = username
         self.password = password
@@ -225,6 +162,11 @@ class Lackey:
             os.makedirs(self.make_evidence)
         
 
+    def signal_handler(self, signal, frame):
+        # Handle the Ctrl+C signal here
+        print("Ctrl+C detected. Exiting...")
+        sys.exit(0)
+    
     def parse_user_csv(self, plugin_ids):
         ips = []
         ports = []
@@ -243,7 +185,7 @@ class Lackey:
         #ips = list(set(ips))
         return name, ips, ports
 
-    def verify_scans(self, plugin_id, script, execute_custom=False, execute_nmap=False, remote=True):
+    def verify_scans(self, plugin_id, script, execute_custom=False, execute_nmap=False, remote=True, plugin_name=None):
         c = Colours()
         name, ips, ports = self.parse_user_csv(plugin_id)
         valid_scan_found = False
@@ -254,7 +196,7 @@ class Lackey:
                         break
                     ip = ips[i]
                     port = ports[i]
-                    status = self.execute_checks(ip, port, name, script, execute_custom, execute_nmap, remote)
+                    status = self.execute_checks(ip, port, name, script, execute_custom, execute_nmap, remote, plugin_name=plugin_name)
                     if status == "down":
                         if i == len(ips) - 1:
                             print(c.red,"Error: All IP addresses are down -", name)
@@ -269,54 +211,48 @@ class Lackey:
                         valid_scan_found = True
                         break
             except Exception as e:
-                    p.failure(e.args[0])
+                    print(e)
                     exit()
+            
+        
                     
     def execute_plugin(self, plugin_name):
         plugin_id = self.plugin_config.plugins[plugin_name]["ids"]
         script = self.plugin_config.plugins[plugin_name]["option"]
         if plugin_name.startswith("custom"):
-            self.verify_scans(plugin_id, script, execute_custom=True, remote=True)
+            self.verify_scans(plugin_id, script, execute_custom=True, remote=True, plugin_name=plugin_name)
+        # elif self.args.drone == "localhost" or self.args.drone == "127.0.0.1":
+        #     if plugin_name.startswith("custom"):
+        #         self.verify_scans(plugin_id, script, execute_custom=True, local=True, plugin_name=plugin_name)
+        #     else:
+        #         self.verify_scans(plugin_id, script, execute_nmap=True, local=True, plugin_name=plugin_name)
         else:
-            self.verify_scans(plugin_id, script, execute_nmap=True, remote=True)
+            self.verify_scans(plugin_id, script, execute_nmap=True, remote=True, plugin_name=plugin_name)
 
-    def run_all(self):
-        for plugin_name in self.plugin_config.plugins.keys():
-            self.execute_plugin(plugin_name)
     
-    def zip_evidence(self):
-        directory = self.make_evidence
-        zip_name = "evidence.zip"
-        zip_file = zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED)
-        print("Zipping evidence ...")
-        for file_name in os.listdir(directory):
-        # Ignore subdirectories
-            if not os.path.isdir(file_name):
-            # Add the file to the zip file
-                zip_file.write(os.path.join(directory, file_name), file_name)
-        zip_file.close()
+    
+    
             
             
-    def execute_checks(self, ip, port, name, script, execute_custom=False, execute_nmap=False, remote=True, local=False):
+    def execute_checks(self, ip, port, name, script, execute_custom=False, execute_nmap=False, remote=True, local=False, plugin_name=None):
         with LogContext("Analyzing results") as p:
             nmap = "nmap -T4"
             c = Colours()
             try:
-                output_file = "evidence/{}.txt".format(name.replace("/", "-",).replace(" ", "_"))
                 drone = Drone(self.drone, self.username, self.password)
+                output_file = "evidence/{}.txt".format(plugin_name)
+                
                 print(c.blue,f"Testing {ip}:{port} for {name}")
                 if execute_custom and remote:
                     cmd = f'{script} {ip} '
-                    stdout = drone.execute(cmd)
-                    output = stdout
+                    output = drone.execute(cmd)
                     with open(output_file, "w") as f:
                         f.write(output)
                     with open(output_file, "r") as f:
                         content = f.read()
                 if execute_nmap and remote:
                     cmd = f'{nmap} {script} -p {port} {ip} '
-                    stdout = drone.execute(cmd)
-                    output = stdout
+                    output = drone.execute(cmd)
                     with open(output_file, "w") as f:
                         f.write(output)
                     with open(output_file, "r") as f:
@@ -340,11 +276,13 @@ class Lackey:
                     return "up"
 
             except Exception as e:
-                p.failure(e.args[0])
+                p.failure(e)
         # self.zip_evidence()
         drone.close()
         
-                
+    def manual_tests(self):
+        for plugin_name in self.plugin_config.plugins.keys():
+            self.execute_plugin(plugin_name)
         
 
 
@@ -430,8 +368,7 @@ class Analyzer:
         pass
 
 class Nessus:
-    auth = None
-    def __init__(self, drone, username, password, mode, project_name, policy_file, targets_file, scan_file, exclude_file, output_folder):
+    def __init__(self, drone, username, password, mode, project_name, policy_file, targets_file, scan_file, exclude_file, output_folder, auth=False):
         self.output_folder = output_folder
         self.drone = drone
         self.username = username
@@ -446,8 +383,12 @@ class Nessus:
             "username": username,
             "password": password
         }
-        if not Nessus.auth:
-            Nessus.get_auth(self)
+        if auth:
+            # If auth=True, do not call get_auth and assume authentication is already done
+            return
+
+        # Otherwise, call get_auth to authenticate
+        self.get_auth
         # self.get_auth()
         if policy_file: 
             self.policy_file = policy_file.read()
@@ -886,7 +827,6 @@ class Nessus:
 
     # Mode handlers
     def deploy(self):
-        # self.get_auth()
         self.exclude_targets()
         self.update_settings()
         self.import_policies()
@@ -896,32 +836,27 @@ class Nessus:
         self.analyze_results(scan_file)
 
     def trigger(self):
-        # self.get_auth()
         self.exclude_targets()
         self.update_settings()
         self.import_policies()
         self.create_scan(False)
 
     def launch(self):
-        # self.get_auth()
         self.scan_action("launch")
         self.monitor_scan()
         scan_file = self.export_scan()
         self.analyze_results(scan_file)
 
     def pause(self):
-        # self.get_auth()
         self.scan_action("pause")
 
     def resume(self):
-        # self.get_auth()
         self.scan_action("resume")
         self.monitor_scan()
         scan_file = self.export_scan()
         self.analyze_results(scan_file)
 
     def export(self):
-        # self.get_auth()
         self.export_scan()
         # scan_file = self.export_scan()
         # self.analyze_results(scan_file)
@@ -953,7 +888,7 @@ if __name__ == "__main__":
         "monitor: monitor scan\n" \
         "export: export scan results, analyze results\n" \
         "analyze: analyze scan file (output exploitable findings, ports matrix, and web directories found)\n"
-        "manual: perform simple nmap scans and manual finding verification"
+        "manual: perform nmap scans and manual finding verification"
     )
     parser.add_argument("-d", "--drone", required=True, help="drone name or IP")
     parser.add_argument("-c", "--client-name", dest="client", required=False, help="client name or project name (used to name the scan and output files)")
@@ -1056,6 +991,6 @@ if __name__ == "__main__":
         nessus.analyze_results()
 
     elif args.mode == "manual":
-        log.info("Performing manual testing")
+        print(c.green,f"Performing manual testing\n{c.yellow} All scan output will be saved in the {c.bold}evidence{c.rc} directoy{c.rc}")
         Nessus.auth=True
-        execute.run_all()		
+        execute.manual_tests()		
