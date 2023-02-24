@@ -230,7 +230,17 @@ class Lackey:
             self.verify_scans(plugin_id, script, execute_nmap=True, remote=True, plugin_name=plugin_name)
 
     
-    
+    def zip_evidence(self):
+        directory = self.make_evidence
+        zip_name = "evidence.zip"
+        zip_file = zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED)
+        print("Zipping evidence ...")
+        for file_name in os.listdir(directory):
+        # Ignore subdirectories
+            if not os.path.isdir(file_name):
+            # Add the file to the zip file
+                zip_file.write(os.path.join(directory, file_name), file_name)
+        zip_file.close() 
     
             
             
@@ -388,8 +398,7 @@ class Nessus:
             return
 
         # Otherwise, call get_auth to authenticate
-        self.get_auth
-        # self.get_auth()
+        self.get_auth()
         if policy_file: 
             self.policy_file = policy_file.read()
             self.policy_file_name = policy_file.name
@@ -408,48 +417,6 @@ class Nessus:
 
         if scan_file:
             self.scan_file = scan_file
-    # def upload_script(self):
-    #         with LogContext("Uploading Verify Script and csv file") as p:
-    #             try:
-    #                 drone = Drone(self.drone, self.username, self.password)
-    #                 csv_file = f"{self.project_name}.csv"
-    #                 script = "nmb.py"
-    #                 os.path.isfile(csv_file)
-    #                 p.success("CSV file found")
-    #                 drone.upload(script)
-    #                 drone.upload(csv_file)
-    #                 drone.close()
-
-    #             except Exception as e:
-    #                 log.error(e.args[0])
-    #                 exit()
-    # def execute_script(self):
-    #         with LogContext("Executing Verify Script") as p:
-    #             try:
-    #                 drone = Drone(self.drone, self.username, self.password)
-                    
-    #                 cmd = f"sudo python3 /tmp/nmb.py /tmp/{self.project_name}.csv"
-    #                 stdout_str = drone.execute(cmd)
-    #                 print(stdout_str)
-    #                 drone.close()
-
-    #             except Exception as e:
-    #                 log.error(e.args[0])
-    #                 exit()
-    # def evidence_download(self):
-    #     with LogContext("Downloading Evidence") as p:
-    #             try:
-    #                 drone = Drone(self.drone, self.username, self.password)
-    #                 remote_file = f"/home/{username}/evidence.zip"
-    #                 local_file = drone.download(remote_file)
-    #                 drone.close()
-
-    #                 p.success()
-
-    #             except Exception as e:
-    #                 log.error(e.args[0])
-    #                 exit()
-
 
     # Auth handlers
     def get_auth(self, verbose=True):
