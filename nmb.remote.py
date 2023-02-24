@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# Deployer - A nessus utility to deploy scans and analyses
+# author: Joey Melo, Connor Fancy
+# version: v1.0.0
 import argparse
 import ipaddress
 import getpass
@@ -22,6 +26,7 @@ log.basicConfig(level=log.ERROR)
 # import xml.etree.ElementTree as ET
 ## TO DO 
 # allow for local scans with subproccess 
+# improve readme 
 # use scan file instead of file
 # add metasploit checks
 # add query functionality
@@ -134,7 +139,7 @@ class PluginConfig:
         self.sslCert = config.get('sslCert', '--script ssl-cert')
         self.sshCiphers = config.get('sshCiphers', '--script ssh2-enum-algos')
         self.sslCiphers = config.get('sslCiphers', '--script ssl-enum-ciphers')
-        self.redisInfo = config.get('redisInfo', '--script redis-info')
+        self.redisInfo = config.get('redisInfo', 'redis-cli -h {} info && sleep 1 && echo -e "quit\n"')
         self.plugins = config.get('plugins', {})
         for plugin_name, plugin_config in self.plugins.items():
             if "option" in plugin_config:
@@ -206,7 +211,7 @@ class Lackey:
                         # valid_scan_found = True
                         # break
                     else:
-                        print(c.green,"Finding:", name, "Verified")
+                        print(c.green,"Finding:", name, f"{c.bold}Verified{c.rc}")
                         # Set the flag variable to indicate that a valid scan has been found
                         valid_scan_found = True
                         break
@@ -251,7 +256,8 @@ class Lackey:
             try:
                 drone = Drone(self.drone, self.username, self.password)
                 output_file = "evidence/{}.txt".format(plugin_name)
-                
+                if self.args.external:
+                    output_file = "evidence/external-{}.txt".format(plugin_name)
                 print(c.blue,f"Testing {ip}:{port} for {name}")
                 if execute_custom and remote:
                     cmd = f'{script} {ip} '
@@ -267,6 +273,13 @@ class Lackey:
                         f.write(output)
                     with open(output_file, "r") as f:
                         content = f.read()
+                if plugin_name == "redis_info":
+                    cmd = f"{script.format(ip)}"
+                    output = drone.execute(cmd)
+                    with open(output_file, "w") as f:
+                        f.write(output)
+                    with open(output_file, "r") as f:
+                        content = f.read()
 
                 
                 # if execute_custom and local:
@@ -274,10 +287,11 @@ class Lackey:
                 # if execute_nmap and local == False:
                 #     content = drone.execute([f'{nmap} {script} -p {port} {ip} '], capture_output=True, shell=True, check=True)
                 
-                if "Host seems down" in content or "0 hosts up" in content or "closed" in content:
+                if "Host seems down" in content or "0 hosts up" in content or "closed" in content or "ERROR" in content:
                     return "down"
-                if not content:
-                    return "unknown"
+                if plugin_name == "ssl_cert":
+                    if "Subject" not in content or not content:
+                        return "unknown"
                 elif "filtered" in content:
                     return "unknown"
                 if "SNMP request timeout" in content or "request timed out" in content:
@@ -378,7 +392,7 @@ class Analyzer:
         pass
 
 class Nessus:
-    def __init__(self, drone, username, password, mode, project_name, policy_file, targets_file, scan_file, exclude_file, output_folder, auth=False):
+    def __init__(self, drone, username, password, mode, project_name, policy_file, targets_file, scan_file, exclude_file, output_folder, auth=True):
         self.output_folder = output_folder
         self.drone = drone
         self.username = username
@@ -393,12 +407,12 @@ class Nessus:
             "username": username,
             "password": password
         }
-        if auth:
-            # If auth=True, do not call get_auth and assume authentication is already done
-            return
+        if not auth:
+            self.get_auth()
+           
 
         # Otherwise, call get_auth to authenticate
-        self.get_auth()
+        
         if policy_file: 
             self.policy_file = policy_file.read()
             self.policy_file_name = policy_file.name
@@ -865,6 +879,7 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output-path", dest="output", required=False, help="output path to store exported files", type=pathlib.Path, default=os.getcwd())
     parser.add_argument("-s", "--scan-file", dest="scan_file", required=False, help="scan results file")
     parser.add_argument("-f ", "--csv-file", dest="file", required=False, help="Path/to/nessus_scan_results.csv")
+    parser.add_argument("-x", "--external", dest="external", required=False, action="store_const", const=True)
     args = parser.parse_args()
     c = Colours()
     # Check args requirements for each mode
@@ -921,7 +936,8 @@ if __name__ == "__main__":
         targets_file=args.targets,
         scan_file=args.scan_file,
         exclude_file=args.exclude_file,
-        output_folder=args.output
+        output_folder=args.output,
+        auth=True
     )
     
     
@@ -959,5 +975,4 @@ if __name__ == "__main__":
 
     elif args.mode == "manual":
         print(c.green,f"Performing manual testing\n{c.yellow} All scan output will be saved in the {c.bold}evidence{c.rc} directoy{c.rc}")
-        Nessus.auth=True
         execute.manual_tests()		

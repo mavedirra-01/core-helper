@@ -34,7 +34,7 @@
             "ids": [
                 "51192", "20007", "57582", "15901"
             ],
-            "option": "{{sshCiphers}}"
+            "option": "{{sslCert}}"
         },
         "ssh_ciphers": {
             "ids": [
