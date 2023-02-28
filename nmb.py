@@ -708,6 +708,7 @@ class Nessus:
 # ############ Removed the below code as the url is different between nessus 8 and nessus 10 but the template ID is the same
             response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
             templates = json.loads(response.text)
+            print(templates)
             for template in templates:
                 
                 
