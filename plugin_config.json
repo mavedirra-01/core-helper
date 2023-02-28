@@ -6,6 +6,12 @@
             ],
             "option": "{{serviceVersion}}"
         },
+        "iDRAC_version": {
+            "ids": [
+                "162428"
+            ],
+            "option": "{{serviceVersion}}"
+        },
         "custom_snmp_check": {
             "ids": [
                 "41028"
