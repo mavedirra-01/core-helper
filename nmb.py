@@ -286,6 +286,7 @@ class Lackey:
                             content = f.read()
                     elif execute_nmap:
                         cmd = f'{nmap} {script} -p {port} {ip} '
+                        print(cmd)
                         output = drone.execute(cmd)
                         with open(output_file, "w") as f:
                             f.write(output)
