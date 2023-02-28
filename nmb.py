@@ -22,7 +22,7 @@ import zipfile
 import subprocess
 import xml.etree.ElementTree as XML
 requests.packages.urllib3.disable_warnings()
-log.basicConfig(level=log.ERROR)
+log.basicConfig(level=log.INFO)
 # import xml.etree.ElementTree as ET
 ## TO DO 
 
