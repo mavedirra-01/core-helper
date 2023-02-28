@@ -710,7 +710,7 @@ class Nessus:
             templates = json.loads(response.text)
             for template in templates:
                 template_id = template['id']
-                output = template_id, template['name']
+                output = f"{template_id}" + template['name']
                 with open ("tmp.csv", "w") as f:
                     f.write(output)
                     template_name = f.read()
