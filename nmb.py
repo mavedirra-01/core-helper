@@ -715,7 +715,7 @@ class Nessus:
                 # if template["name"] == "Detailed Vulnerabilites By Host with Compliance/Remediations":
                 template_id = template['id']
                 print(template_id, template['name'])
-                break	
+                
                 # else:
                 #     template_id = template["id"]
                 #     print(template_id, template["name"])
