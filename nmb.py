@@ -25,7 +25,7 @@ requests.packages.urllib3.disable_warnings()
 log.basicConfig(level=log.INFO)
 # import xml.etree.ElementTree as ET
 ## TO DO 
-
+# nessus reathentication
 # improve readme 
 # use scan file instead of file
 # add metasploit checks
@@ -261,7 +261,7 @@ class Lackey:
                 if self.args.external:
                     print(c.yellow,"Evidence output files will be marked with the external flag")
                     output_file = "evidence/external-{}.txt".format(plugin_name)
-                print(c.blue,f"Testing {ip}:{port} for {name} with {script}")
+                print(c.blue,f"Testing {ip}:{port} for {name}")
 
                 if self.args.local:
                     if execute_custom and self.args.local:
@@ -278,7 +278,6 @@ class Lackey:
                     drone = Drone(self.drone, self.username, self.password)
                     if execute_custom:
                         cmd = f'{script} {ip} '
-                        print(cmd)
                         output = drone.execute(cmd)
                         with open(output_file, "w") as f:
                             f.write(output)
@@ -286,7 +285,6 @@ class Lackey:
                             content = f.read()
                     elif execute_nmap:
                         cmd = f'{nmap} {script} -p {port} {ip} '
-                        print(cmd)
                         output = drone.execute(cmd)
                         with open(output_file, "w") as f:
                             f.write(output)
