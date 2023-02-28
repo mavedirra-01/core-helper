@@ -711,7 +711,7 @@ class Nessus:
             with open("tmp.txt", "w") as f:
                 for template in templates:
                     template_id = template['id']
-                    output = f"{template_id},{template['name']}"
+                    output = f"{template_id}, {template['name']}"
                     f.write(output)
                     f.write('\n')
 
@@ -722,7 +722,7 @@ class Nessus:
                 # template_id = template['id']
                 print(template_id)
             else:
-                print(template_id)
+                print("FAIL")
                 # if template["name"] == "Detailed Vulnerabilites By Host with Compliance/Remediations":
                 
                 
