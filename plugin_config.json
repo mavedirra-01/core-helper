@@ -101,6 +101,12 @@
                 "108797"
             ],
             "option": "{{osVersion}}"
+        },
+        "custom_snmp_check": {
+            "ids": [
+                "41028"
+            ],
+            "option": "snmp-check -v 2c -c public -w"
         }
     }
 }
