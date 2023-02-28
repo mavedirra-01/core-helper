@@ -717,11 +717,10 @@ class Nessus:
 
             with open("tmp.csv", "r") as f:
                 file_contents = f.read()
-                
-            for template in templates:
-                if template['name'] == 'Detailed Vulnerabilites By Plugin':
-                    template_id = template['id']
-                    print(template_id)
+
+            if 'Detailed Vulnerabilites By Plugin' in file_contents:
+                template_id = template['id']
+                print(template_id)
 
                 # if template["name"] == "Detailed Vulnerabilites By Host with Compliance/Remediations":
                 
