@@ -719,7 +719,7 @@ class Nessus:
                 file_contents = f.read()
             for template in templates:
                 if 'Vulnerabilites By Plugin' in file_contents:
-                    template_id = template['id']
+                    # template_id = template['id']
                     print(template_id)
                 else:
                     print(template_id)
