@@ -711,7 +711,7 @@ class Nessus:
             with open("tmp.txt", "w") as f:
                 for template in templates:
                     template_id = template['id']
-                    output = f"{template_id} {template['name']}"
+                    output = f"{template_id},{template['name']}"
                     f.write(output)
                     f.write('\n')
 
@@ -720,7 +720,7 @@ class Nessus:
                 # Read the file line by line
                 for line in f:
                     # Split the line into two parts using whitespace as the delimiter
-                    parts = line.split()
+                    parts = line.split(',')
                     # Check if the second part matches the string you're looking for
                     if parts[1] == 'Detailed Vulnerabilities By Plugin':
                         # If it does, print the first part, which is the numeric value
