@@ -708,16 +708,15 @@ class Nessus:
 # ############ Removed the below code as the url is different between nessus 8 and nessus 10 but the template ID is the same
             response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
             templates = json.loads(response.text)
-            with open("tmp.csv", "w") as f:
+            with open("tmp.txt", "w") as f:
                 for template in templates:
                     template_id = template['id']
                     output = f"{template_id},{template['name']}"
                     f.write(output)
                     f.write('\n')
 
-            with open("tmp.csv", "r") as f:
+            with open("tmp.txt", "r") as f:
                 file_contents = f.read()
-            print (file_contents)
             # for template in templates:
             if 'Vulnerabilites By Plugin' in file_contents:
                 # template_id = template['id']
