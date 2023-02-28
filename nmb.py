@@ -715,7 +715,10 @@ class Nessus:
                     template_id = template["id"]
                     print(template_id, template["name"])
                     break	
-
+                else:
+                    template_id = template["id"]
+                    print(template_id, template["name"])
+                    break
 
             # format handlers
             # formats = {
