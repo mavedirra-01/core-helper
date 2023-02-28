@@ -709,16 +709,18 @@ class Nessus:
             response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
             templates = json.loads(response.text)
             for template in templates:
+                template_id = template['id']
+                output = template_id, template['name']
+                with open ("tmp.csv", "w") as f:
+                    f.write(output)
+                    template_name = f.read()
                 
-                
-                if 'detailed vulnerabilites by plugin' in template['name']:
+                if 'Detailed Vulnerabilites By Plugin' in template_name:
+                    print(template_id)
                 # if template["name"] == "Detailed Vulnerabilites By Host with Compliance/Remediations":
-                    template_id = template['id']
-                    print(template_id, template['name'])
                 
-                else:
-                    print("FAILED")
-                    break
+                
+                
 
             # format handlers
             # formats = {
