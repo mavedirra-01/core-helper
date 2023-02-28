@@ -722,12 +722,12 @@ class Nessus:
                     # Split the line into two parts using whitespace as the delimiter
                     parts = line.split(',')
                     # Check if the second part matches the string you're looking for
-                    if 'Detailed Vulnerabilities By Plugin' in parts[1]:
-                        # If it does, print the first part, which is the numeric value
-                        print(parts[0])
+                if 'Detailed Vulnerabilities By Plugin' in parts[1]:
+                    # If it does, print the first part, which is the numeric value
+                    print(parts[0])
 
-                    else:
-                        print("FAIL")
+                else:
+                    print("FAIL")
                 
                 
                 
