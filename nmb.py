@@ -720,10 +720,11 @@ class Nessus:
                 for row in reader:
                         id = row[0]
                         template_name = row[1]
-                        print(id, template_name)
                 
-                if "Detailed Vulnerabilities By Plugin" in template_name:
-                    print("hello world")
+            if "Detailed Vulnerabilities By Plugin" in template_name:
+                print("hello world")
+            else:
+                print("FAIL")
                 
                 
                 
