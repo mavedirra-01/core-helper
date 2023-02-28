@@ -265,7 +265,7 @@ class Lackey:
 
                 if self.args.local:
                     if execute_custom and self.args.local:
-                        output = subprocess.run([f'{script} -p {port} {ip} '], capture_output=True, shell=True, check=True)
+                        output = subprocess.run([f'{script} {ip} '], capture_output=True, shell=True, check=True)
                     if execute_nmap and self.args.local:
                         output = subprocess.run([f"{nmap} {script} -p {port} {ip} "], capture_output=True, shell=True, check=True)
                     with open(output_file, "w") as f:
