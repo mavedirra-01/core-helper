@@ -261,7 +261,7 @@ class Lackey:
                 if self.args.external:
                     print(c.yellow,"Evidence output files will be marked with the external flag")
                     output_file = "evidence/external-{}.txt".format(plugin_name)
-                print(c.blue,f"Testing {ip}:{port} for {name}")
+                print(c.blue,f"Testing {ip}:{port} for {name} with {script}")
 
                 if self.args.local:
                     if execute_custom and self.args.local:
@@ -278,6 +278,7 @@ class Lackey:
                     drone = Drone(self.drone, self.username, self.password)
                     if execute_custom:
                         cmd = f'{script} {ip} '
+                        print(cmd)
                         output = drone.execute(cmd)
                         with open(output_file, "w") as f:
                             f.write(output)
