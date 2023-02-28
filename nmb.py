@@ -718,81 +718,81 @@ class Nessus:
 
 
             # format handlers
-            formats = {
-                "nessus": {
-                    "format": "nessus"
-                },
-                "html": {
-                    "format": "html",
-                    "template_id": template_id,
-                    "csvColumns": {},
-                    "formattingOptions": {},
-                    "extraFilters": {
-                        "host_ids": [],
-                        "plugin_ids": []
-                    }
-                }, 
-                "csv": {
-                    "format": "csv",
-                    "template_id": "",
-                    "reportContents": {
-                        "csvColumns": {
-                            "id": True,
-                            "cve": True,
-                            "cvss": True,
-                            "risk": True,
-                            "hostname": True,
-                            "protocol": True,
-                            "port": True,
-                            "plugin_name": True,
-                            "synopsis": True,
-                            "description": True,
-                            "solution": True,
-                            "see_also": True,
-                            "plugin_output": True,
-                            "stig_severity": True,
-                            "cvss3_base_score": True,
-                            "cvss_temporal_score": True,
-                            "cvss3_temporal_score": True,
-                            "risk_factor": True,
-                            "references": True,
-                            "plugin_information": True,
-                            "exploitable_with": True
-                        }
-                    },
-                    "extraFilters": {
-                        "host_ids": [],
-                        "plugin_ids": []
-                    }
-                }
-            }
+            # formats = {
+            #     "nessus": {
+            #         "format": "nessus"
+            #     },
+            #     "html": {
+            #         "format": "html",
+            #         "template_id": template_id,
+            #         "csvColumns": {},
+            #         "formattingOptions": {},
+            #         "extraFilters": {
+            #             "host_ids": [],
+            #             "plugin_ids": []
+            #         }
+            #     }, 
+            #     "csv": {
+            #         "format": "csv",
+            #         "template_id": "",
+            #         "reportContents": {
+            #             "csvColumns": {
+            #                 "id": True,
+            #                 "cve": True,
+            #                 "cvss": True,
+            #                 "risk": True,
+            #                 "hostname": True,
+            #                 "protocol": True,
+            #                 "port": True,
+            #                 "plugin_name": True,
+            #                 "synopsis": True,
+            #                 "description": True,
+            #                 "solution": True,
+            #                 "see_also": True,
+            #                 "plugin_output": True,
+            #                 "stig_severity": True,
+            #                 "cvss3_base_score": True,
+            #                 "cvss_temporal_score": True,
+            #                 "cvss3_temporal_score": True,
+            #                 "risk_factor": True,
+            #                 "references": True,
+            #                 "plugin_information": True,
+            #                 "exploitable_with": True
+            #             }
+            #         },
+            #         "extraFilters": {
+            #             "host_ids": [],
+            #             "plugin_ids": []
+            #         }
+            #     }
+            # }
 
-            for k,v in formats.items():
+            # for k,v in formats.items():
             
-                with LogContext(f"Exporting {k} file") as p:
-                    # get scan token
-                    data = v
-                    response = requests.post(self.url + "/scans/" + str(scan_id) + "/export", headers=self.token_auth, json=data, verify=False)
-                    if response.status_code != 200:
-                        raise Exception(f"Exporting {k} file failed with status code {response.status_code}")
-                    scan_token = json.loads(response.text)["token"]
+            #     with LogContext(f"Exporting {k} file") as p:
+            #         # get scan token
+            #         data = v
+            #         response = requests.post(self.url + "/scans/" + str(scan_id) + "/export", headers=self.token_auth, json=data, verify=False)
+            #         if response.status_code != 200:
+            #             raise Exception(f"Exporting {k} file failed with status code {response.status_code}")
+            #         scan_token = json.loads(response.text)["token"]
 
-                    # download file
-                    while True:
-                        response = requests.get(self.url + "/tokens/" + scan_token + "/download", headers=self.token_auth, verify=False)
-                        if "not ready" in response.text:
-                            time.sleep(5)
+            #         # download file
+            #         while True:
+            #             response = requests.get(self.url + "/tokens/" + scan_token + "/download", headers=self.token_auth, verify=False)
+            #             if "not ready" in response.text:
+            #                 time.sleep(5)
 
-                        elif response.status_code == 200:
-                            file_path = os.path.join(self.output_folder, self.project_name + f".{k}")
-                            open(file_path, "wb").write(response.content)
-                            p.success(f"Done. Scan file exported to \"{file_path}\"")
-                            break
+            #             elif response.status_code == 200:
+            #                 file_path = os.path.join(self.output_folder, self.project_name + f".{k}")
+            #                 open(file_path, "wb").write(response.content)
+            #                 p.success(f"Done. Scan file exported to \"{file_path}\"")
+            #                 break
 
-                        else:
-                            raise Exception(f"Downloading {k} file failed with status code {response.status_code}")
+            #             else:
+            #                 raise Exception(f"Downloading {k} file failed with status code {response.status_code}")
 
-            return self.project_name + ".nessus"
+            # return self.project_name + ".nessus"
 
         except Exception as e:
             with LogContext("Exporting scan failed") as p:
