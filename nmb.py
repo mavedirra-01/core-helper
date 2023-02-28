@@ -720,7 +720,7 @@ class Nessus:
                 for row in reader:
                         id = row[0]
                         template_name = row[1]
-                        print (id, template_name)
+                        print(id, template_name)
                        
                 # if template["name"] == "Detailed Vulnerabilites By Host with Compliance/Remediations":
                 
