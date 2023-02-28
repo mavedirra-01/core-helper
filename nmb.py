@@ -25,13 +25,14 @@ requests.packages.urllib3.disable_warnings()
 log.basicConfig(level=log.INFO)
 # import xml.etree.ElementTree as ET
 ## TO DO 
-# nessus reathentication
+# nessus reathentication issue on deploy but not on monitor???
 # improve readme 
 # use scan file instead of file
 # add metasploit checks
 # add query functionality
 # improve logging and colours
 # fix nessus html template issue
+
 
 # Done
 # allow for local scans with subproccess 
@@ -710,15 +711,15 @@ class Nessus:
             for template in templates:
                 
                 
-                if "Detailed Vulnerabilites By Plugin" in template["name"]:
+                # if "Detailed Vulnerabilites By Plugin" in template["name"]:
                 # if template["name"] == "Detailed Vulnerabilites By Plugin":
-                    template_id = template["id"]
-                    print(template_id, template["name"])
-                    break	
-                else:
-                    template_id = template["id"]
-                    print(template_id, template["name"])
-                    break
+                template_id = template["id"]
+                print(template_id, template["name"])
+                break	
+                # else:
+                #     template_id = template["id"]
+                #     print(template_id, template["name"])
+                #     break
 
             # format handlers
             # formats = {
