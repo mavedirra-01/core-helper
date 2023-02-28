@@ -717,6 +717,7 @@ class Nessus:
 
             with open("tmp.csv", "r") as f:
                 file_contents = f.read()
+            print (file_contents)
             # for template in templates:
             if 'Vulnerabilites By Plugin' in file_contents:
                 # template_id = template['id']
