@@ -7,7 +7,7 @@ import ipaddress
 import getpass
 import json
 import signal
-import msvcrt
+# import msvcrt
 import os
 import paramiko
 import pathlib
@@ -25,7 +25,7 @@ requests.packages.urllib3.disable_warnings()
 log.basicConfig(level=log.ERROR)
 # import xml.etree.ElementTree as ET
 ## TO DO 
-# allow for local scans with subproccess 
+
 # improve readme 
 # use scan file instead of file
 # add metasploit checks
@@ -33,6 +33,8 @@ log.basicConfig(level=log.ERROR)
 # improve logging and colours
 # fix nessus html template issue
 
+# Done
+# allow for local scans with subproccess 
 
 class Colours:
     def __init__(self):
@@ -190,7 +192,7 @@ class Lackey:
         #ips = list(set(ips))
         return name, ips, ports
 
-    def verify_scans(self, plugin_id, script, execute_custom=False, execute_nmap=False, remote=True, plugin_name=None):
+    def verify_scans(self, plugin_id, script, execute_custom=False, execute_nmap=False, plugin_name=None):
         c = Colours()
         name, ips, ports = self.parse_user_csv(plugin_id)
         valid_scan_found = False
@@ -201,7 +203,7 @@ class Lackey:
                         break
                     ip = ips[i]
                     port = ports[i]
-                    status = self.execute_checks(ip, port, name, script, execute_custom, execute_nmap, remote, plugin_name=plugin_name)
+                    status = self.execute_checks(ip, port, name, script, execute_custom, execute_nmap, plugin_name=plugin_name)
                     if status == "down":
                         if i == len(ips) - 1:
                             print(c.red,"Error: All IP addresses are down -", name)
@@ -216,8 +218,8 @@ class Lackey:
                         valid_scan_found = True
                         break
             except Exception as e:
-                    print(e)
-                    exit()
+                print(e)
+                exit()
             
         
                     
@@ -225,14 +227,14 @@ class Lackey:
         plugin_id = self.plugin_config.plugins[plugin_name]["ids"]
         script = self.plugin_config.plugins[plugin_name]["option"]
         if plugin_name.startswith("custom"):
-            self.verify_scans(plugin_id, script, execute_custom=True, remote=True, plugin_name=plugin_name)
-        # elif self.args.drone == "localhost" or self.args.drone == "127.0.0.1":
-        #     if plugin_name.startswith("custom"):
-        #         self.verify_scans(plugin_id, script, execute_custom=True, local=True, plugin_name=plugin_name)
-        #     else:
-        #         self.verify_scans(plugin_id, script, execute_nmap=True, local=True, plugin_name=plugin_name)
+            self.verify_scans(plugin_id, script, execute_custom=True, plugin_name=plugin_name)
+        if self.args.local:
+            if plugin_name.startswith("custom"):
+                self.verify_scans(plugin_id, script, execute_custom=True, plugin_name=plugin_name)
+            else:
+                self.verify_scans(plugin_id, script, execute_nmap=True, plugin_name=plugin_name)
         else:
-            self.verify_scans(plugin_id, script, execute_nmap=True, remote=True, plugin_name=plugin_name)
+            self.verify_scans(plugin_id, script, execute_nmap=True, plugin_name=plugin_name)
 
     
     def zip_evidence(self):
@@ -249,50 +251,59 @@ class Lackey:
     
             
             
-    def execute_checks(self, ip, port, name, script, execute_custom=False, execute_nmap=False, remote=True, local=False, plugin_name=None):
+    def execute_checks(self, ip, port, name, script, execute_custom=False, execute_nmap=False, plugin_name=None):
         with LogContext("Analyzing results") as p:
             nmap = "nmap -T4"
             c = Colours()
             try:
-                drone = Drone(self.drone, self.username, self.password)
+                
                 output_file = "evidence/{}.txt".format(plugin_name)
                 if self.args.external:
+                    print(c.yellow,"Evidence output files will be marked with the external flag")
                     output_file = "evidence/external-{}.txt".format(plugin_name)
                 print(c.blue,f"Testing {ip}:{port} for {name}")
-                if execute_custom and remote:
-                    cmd = f'{script} {ip} '
-                    output = drone.execute(cmd)
+
+                if self.args.local:
+                    if execute_custom and self.args.local:
+                        output = subprocess.run([f'{script} -p {port} {ip} '], capture_output=True, shell=True, check=True)
+                    if execute_nmap and self.args.local:
+                        output = subprocess.run([f"{nmap} {script} -p {port} {ip} "], capture_output=True, shell=True, check=True)
                     with open(output_file, "w") as f:
-                        f.write(output)
+                        f.write(output.stdout.decode())
                     with open(output_file, "r") as f:
                         content = f.read()
-                if execute_nmap and remote:
-                    cmd = f'{nmap} {script} -p {port} {ip} '
-                    output = drone.execute(cmd)
-                    with open(output_file, "w") as f:
-                        f.write(output)
-                    with open(output_file, "r") as f:
-                        content = f.read()
-                if plugin_name == "redis_info":
-                    cmd = f"{script.format(ip)}"
-                    output = drone.execute(cmd)
-                    with open(output_file, "w") as f:
-                        f.write(output)
-                    with open(output_file, "r") as f:
-                        content = f.read()
+                
+
+                if not self.args.local:
+                    drone = Drone(self.drone, self.username, self.password)
+                    if execute_custom:
+                        cmd = f'{script} {ip} '
+                        output = drone.execute(cmd)
+                        with open(output_file, "w") as f:
+                            f.write(output)
+                        with open(output_file, "r") as f:
+                            content = f.read()
+                    if execute_nmap:
+                        cmd = f'{nmap} {script} -p {port} {ip} '
+                        output = drone.execute(cmd)
+                        with open(output_file, "w") as f:
+                            f.write(output)
+                        with open(output_file, "r") as f:
+                            content = f.read()
+                    if plugin_name == "redis_info":
+                        cmd = f"{script.format(ip)}"
+                        output = drone.execute(cmd)
+                        with open(output_file, "w") as f:
+                            f.write(output)
+                        with open(output_file, "r") as f:
+                            content = f.read()
 
                 
-                # if execute_custom and local:
-                #     content = subprocess.run([f'{script} -p {port} {ip} '], capture_output=True, shell=True, check=True)
-                # if execute_nmap and local == False:
-                #     content = drone.execute([f'{nmap} {script} -p {port} {ip} '], capture_output=True, shell=True, check=True)
                 
-                if "Host seems down" in content or "0 hosts up" in content or "closed" in content or "ERROR" in content:
+                
+                if "Host seems down" in content or "0 hosts up" in content or "closed" in content:
                     return "down"
-                if plugin_name == "ssl_cert":
-                    if "Subject" not in content or not content:
-                        return "unknown"
-                elif "filtered" in content:
+                elif "filtered" in content or "ERROR" in content:
                     return "unknown"
                 if "SNMP request timeout" in content or "request timed out" in content:
                     return "down"
@@ -302,7 +313,7 @@ class Lackey:
             except Exception as e:
                 p.failure(e)
         # self.zip_evidence()
-        drone.close()
+        # drone.close()
         
     def manual_tests(self):
         for plugin_name in self.plugin_config.plugins.keys():
@@ -392,7 +403,8 @@ class Analyzer:
         pass
 
 class Nessus:
-    def __init__(self, drone, username, password, mode, project_name, policy_file, targets_file, scan_file, exclude_file, output_folder, auth=True):
+    def __init__(self, drone, username, password, mode, project_name, policy_file, targets_file, scan_file, exclude_file, output_folder):
+        self.args = parser.parse_args()
         self.output_folder = output_folder
         self.drone = drone
         self.username = username
@@ -407,11 +419,12 @@ class Nessus:
             "username": username,
             "password": password
         }
-        if not auth:
+        # if not auth:
+        if self.args.mode == "manual": 
+            pass
+        else:
             self.get_auth()
            
-
-        # Otherwise, call get_auth to authenticate
         
         if policy_file: 
             self.policy_file = policy_file.read()
@@ -856,8 +869,10 @@ if __name__ == "__main__":
                  "deployer.py -d storm -c myclient -m deploy -p mypolicy.nessus -t targets.txt\n" \
                  "deployer.py -d localhost -c myclient -m trigger -p custompolicy.nessus -t targets.txt\n" \
                  "deployer.py -d 10.88.88.101 -c myclient -m pause\n" \
-                 "deployer.py -d strange -c myclient -m resume -o /home/drone/Downloads"
-                 "deployer.py -d ironman -m manual [--msf] [-q]"
+                 "deployer.py -d strange -c myclient -m resume -o /home/drone/Downloads\n" \
+                 "deployer.py -d ironman -m manual -f nessus_file.csv\n" \
+                 "deployer.py -d localhost -m manual -f nessus_file.csv --local\n" \
+                 "deployer.py -d pendrone -m manual -f nessus_file.csv --external"
     )
     parser.add_argument("-m", "--mode", required=True, choices=["deploy","trigger","launch","pause","resume","monitor","export","analyze", "manual"], help="" \
         "choose mode to run Nessus:\n" \
@@ -879,7 +894,8 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output-path", dest="output", required=False, help="output path to store exported files", type=pathlib.Path, default=os.getcwd())
     parser.add_argument("-s", "--scan-file", dest="scan_file", required=False, help="scan results file")
     parser.add_argument("-f ", "--csv-file", dest="file", required=False, help="Path/to/nessus_scan_results.csv")
-    parser.add_argument("-x", "--external", dest="external", required=False, action="store_const", const=True)
+    parser.add_argument("-x", "--external", dest="external", required=False, action="store_const", const=True, help="used if drone is 'pendrone'")
+    parser.add_argument("-l", "--local", dest="local", required=False, action="store_const", const=True, help="run manual checks on your local machine instead of over ssh")
     args = parser.parse_args()
     c = Colours()
     # Check args requirements for each mode
@@ -891,18 +907,25 @@ if __name__ == "__main__":
         
         
     if args.mode == "manual":
+        # Nessus.get_auth = True
         if not args.file:
             log.error("You must provide a csv file (-f)")
             exit()
         if not args.file.endswith(".csv"):
             print(c.red,"Error: The file must be of type .csv")
             exit()
-        if os.path.isfile(args.file):
+        if os.path.isfile(args.file) and args.file.endswith(".csv") and args.local:
             print(c.green,"File exists:", args.file)
+            print(c.blue,"Running script with local checks enabled")
+            username = None
+            password = None
+        elif os.path.isfile(args.file) and args.file.endswith(".csv"):
+            print(c.green,"File exists:", args.file)
+            username, password = get_creds()
         else:
             print(c.red,"File does not exist:", args.file)
             exit()
-        username, password = get_creds()
+        
         
     else:
         if args.drone is None or args.client is None:
@@ -937,7 +960,6 @@ if __name__ == "__main__":
         scan_file=args.scan_file,
         exclude_file=args.exclude_file,
         output_folder=args.output,
-        auth=True
     )
     
     
