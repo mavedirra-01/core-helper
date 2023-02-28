@@ -723,7 +723,7 @@ class Nessus:
                     if row[1] == 'Detailed Vulnerabilities By Plugin':
                         template_id = row[0]
 
-                
+            os.remove('tmp.csv')
                 
                 
                 
