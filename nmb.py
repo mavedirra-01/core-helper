@@ -710,8 +710,8 @@ class Nessus:
             for template in templates:
                 
                 
-            #     # if "Detailed Vulnerabilites By Plugin" in template["name"]:
-                if template["name"] == "Detailed Vulnerabilites By Plugin":
+                if "Detailed Vulnerabilites By Plugin" in template["name"]:
+                # if template["name"] == "Detailed Vulnerabilites By Plugin":
                     template_id = template["id"]
                     print(template_id, template["name"])
                     break	
