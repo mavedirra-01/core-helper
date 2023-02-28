@@ -695,7 +695,7 @@ class Nessus:
         try:
             # get scan id
             scan_id = self.get_scan_info()["id"]
-            template_id = "49"
+            # template_id = "49"
             # nessus_version = requests.get(self.url + "/server/properties", headers=self.token_auth, verify=False)
             # version_info = nessus_version.json()
             # ui_version = version_info.get("nessus_ui_version")
@@ -705,14 +705,14 @@ class Nessus:
             # else:
                 
 # ############ Removed the below code as the url is different between nessus 8 and nessus 10 but the template ID is the same
-            # response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
-            # templates = json.loads(response.text)
-            # for template in templates:
+            response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
+            templates = json.loads(response.text)
+            for template in templates:
                 
             #     # if "Detailed Vulnerabilites By Plugin" in template["name"]:
             #     #     #if template["name"] == "Detailed Vulnerabilites By Plugin":
-            #     template_id = template["id"]
-            #     print(template_id, template["name"])
+                template_id = template["id"]
+                print(template_id, template["name"])
             #     #break	
 
 
