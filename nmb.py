@@ -721,7 +721,8 @@ class Nessus:
                 # Read the file line by line
                 for row in csv_reader:
                     if row[1] == 'Detailed Vulnerabilities By Plugin':
-                        print(row[0])
+                        template_id = row[0]
+                        print(template_id)
                 #     # Split the line into two parts using whitespace as the delimiter
                 #     parts = line.split(',')
                 #     # Check if the second part matches the string you're looking for
