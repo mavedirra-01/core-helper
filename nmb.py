@@ -708,23 +708,26 @@ class Nessus:
 # ############ Removed the below code as the url is different between nessus 8 and nessus 10 but the template ID is the same
             response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
             templates = json.loads(response.text)
-            with open("tmp.csv", "w") as f:
+            with open("tmp.txt", "w") as f:
                 for template in templates:
                     template_id = template['id']
-                    output = f"{template_id},{template['name']}"
+                    output = f"{template_id} {template['name']}"
                     f.write(output)
                     f.write('\n')
 
-            with open("tmp.csv", 'r', encoding="utf8") as f:
-                reader = csv.reader(f)
-                for row in reader:
-                        id = row[0]
-                        template_name = row[1]
-                
-            if ",Detailed Vulnerabilities By Plugin" in template_name:
-                print("hello world")
-            else:
-                print("FAIL")
+            # Open the file for reading
+            with open('tmp.txt', 'r') as f:
+                # Read the file line by line
+                for line in f:
+                    # Split the line into two parts using whitespace as the delimiter
+                    parts = line.split()
+                    # Check if the second part matches the string you're looking for
+                    if parts[1] == 'Detailed Vulnerabilities By Plugin':
+                        # If it does, print the first part, which is the numeric value
+                        print(parts[0])
+
+                    else:
+                        print("FAIL")
                 
                 
                 
