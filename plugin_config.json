@@ -12,12 +12,6 @@
             ],
             "option": "{{serviceVersion}}"
         },
-        "custom_snmp_check": {
-            "ids": [
-                "41028"
-            ],
-            "option": "snmp-check -v 2c -c public -w"
-        },
         "custom_ntp_mode6": {
             "ids": [
                 "97861"

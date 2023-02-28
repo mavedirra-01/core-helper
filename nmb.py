@@ -263,15 +263,15 @@ class Lackey:
                     output_file = "evidence/external-{}.txt".format(plugin_name)
                 print(c.blue,f"Testing {ip}:{port} for {name} with {script}")
 
-                # if self.args.local:
-                #     if execute_custom and self.args.local:
-                #         output = subprocess.run([f'{script} {ip} '], capture_output=True, shell=True, check=True)
-                #     if execute_nmap and self.args.local:
-                #         output = subprocess.run([f"{nmap} {script} -p {port} {ip} "], capture_output=True, shell=True, check=True)
-                #     with open(output_file, "w") as f:
-                #         f.write(output.stdout.decode())
-                #     with open(output_file, "r") as f:
-                #         content = f.read()
+                if self.args.local:
+                    if execute_custom and self.args.local:
+                        output = subprocess.run([f'{script} {ip} '], capture_output=True, shell=True, check=True)
+                    if execute_nmap and self.args.local:
+                        output = subprocess.run([f"{nmap} {script} -p {port} {ip} "], capture_output=True, shell=True, check=True)
+                    with open(output_file, "w") as f:
+                        f.write(output.stdout.decode())
+                    with open(output_file, "r") as f:
+                        content = f.read()
                 
 
                 if not self.args.local:
