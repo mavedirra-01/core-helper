@@ -228,7 +228,7 @@ class Lackey:
         script = self.plugin_config.plugins[plugin_name]["option"]
         if plugin_name.startswith("custom"):
             self.verify_scans(plugin_id, script, execute_custom=True, plugin_name=plugin_name)
-        if self.args.local:
+        elif self.args.local:
             if plugin_name.startswith("custom"):
                 self.verify_scans(plugin_id, script, execute_custom=True, plugin_name=plugin_name)
             else:
