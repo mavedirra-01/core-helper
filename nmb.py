@@ -722,7 +722,7 @@ class Nessus:
                         template_name = row[1]
                         print(id, template_name)
                 
-                if "Detailed Vulnerabilities By Plugin" in output:
+                if "Detailed Vulnerabilities By Plugin" in template_name:
                     print("hello world")
                 
                 
