@@ -291,7 +291,7 @@ class Lackey:
                             f.write(output)
                         with open(output_file, "r") as f:
                             content = f.read()
-                    if plugin_name == "redis_info":
+                    if plugin_name == "redis_info":             #This is a temp fix for now, migrate to custom eventually#
                         cmd = f"{script.format(ip)}"
                         output = drone.execute(cmd)
                         with open(output_file, "w") as f:
@@ -721,7 +721,7 @@ class Nessus:
                         id = row[0]
                         template_name = row[1]
                 
-            if "Detailed Vulnerabilities By Plugin" in template_name:
+            if ",Detailed Vulnerabilities By Plugin" in template_name:
                 print("hello world")
             else:
                 print("FAIL")
