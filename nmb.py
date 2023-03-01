@@ -179,7 +179,7 @@ def get_supported_plugins():
             if plugin_id in all_plugin_ids:
                 continue
             # Create a new dictionary for the missing plugin ID
-            missing_plugin = {"ids": [plugin_id], "option": "{{serviceVersion}}"}
+            missing_plugin = {"ids": [plugin_id], "option": "FIXME"}
             # Add the missing plugin to the "plugins" dictionary in the JSON file
             if plugin_name in data["plugins"]:
                 data["plugins"][plugin_name]["ids"].append(plugin_id)
@@ -289,6 +289,9 @@ class Lackey:
                         if i == len(ips) - 1:
                             print(c.red,"Error: All IP addresses are down -", name)
                             break
+                    elif status == "skip":
+                        print(c.yellow, "FIXME script detected, no check will be executed for: ", name)
+                        valid_scan_found = True
                     elif status == "unknown":
                         print(c.yellow,"Host may be down, unable to verify -", name)
                         # valid_scan_found = True
@@ -339,33 +342,26 @@ class Lackey:
             nmap = "nmap -T4"
             c = Colours()
             content = ''
+            
             try:
                 output_file = "evidence/{}.txt".format(plugin_name)
                 if self.args.external:
                     print(c.yellow,"Evidence output files will be marked with the external flag")
-                    output_file = "evidence/external-{}.txt".format(plugin_name)
+                    output_file = "evidence/external-{}.txt".format(plugin_name) 
+                    
+                if script == "FIXME":
+                    return "skip"
                 
-
                 if self.args.local:
                     print(c.blue,f"Testing {ip}:{port} for {name}")
                     if execute_custom and self.args.local:
-                        output = subprocess.run([f'{script} {ip} '], capture_output=True, shell=True, check=True)
+                        output = subprocess.run([f'{script} {ip}'], capture_output=True, shell=True, check=True)
                     elif execute_nmap and self.args.local:
-                        output = subprocess.run([f"{nmap} {script} -p {port} {ip} "], capture_output=True, shell=True, check=True)
+                        output = subprocess.run([f"{nmap} {script} -p {port} {ip}"], capture_output=True, shell=True, check=True)
                     with open(output_file, "w") as f:
                         f.write(output.stdout.decode())
                     with open(output_file, "r") as f:
                         content = f.read()
-                
-                # if self.args.supported:
-                #     supported_file = "supported_plugins.txt"
-                #     with open(supported_file, "a") as f:
-                #         f.write(f"{name}\n")
-                #     with open(supported_file, "r") as f:
-                #         contents = f.read()
-                #         print(contents)
-                        
-                   
 
                 else:
                     print(c.blue,f"Testing {ip}:{port} for {name}")
