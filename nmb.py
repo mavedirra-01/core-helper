@@ -24,19 +24,24 @@ import xml.etree.ElementTree as XML
 requests.packages.urllib3.disable_warnings()
 log.basicConfig(level=log.INFO)
 # import xml.etree.ElementTree as ET
+
+
 ## TO DO 
 # nessus reathentication issue on deploy but not on monitor???
 # improve readme 
 # use scan file instead of file
 # add metasploit checks
-# add query functionality
+
 # improve logging and colours
-# fix nessus html template issue
+# Improve json appending to also include nmap/custom command use a list of keywords to create catagories
+
 
 
 # Done
 # allow for local scans with subproccess 
-
+# fix nessus html template issue - workaround is writing output to csv file then reading the csv to see if string matches
+# no idea why this is the fix but it appears to be working as intended now
+# add query functionality
 class Colours:
     def __init__(self):
         self.green = "\033[32m[+]\033[0m"
@@ -130,13 +135,88 @@ class Drone():
         pass
 
 
+def get_supported_plugins():
+    # Keywords to catogorize findings, this is the best method i can currently think of. 
+    
+    
+    #
+    plugin_ids_not_in_json = []
+    all_plugin_ids = set()
+    with open(args.file, 'r') as csv_file:
+        csv_reader = csv.reader(csv_file)
+        # Skip the header row
+        next(csv_reader)
+        # Create a dictionary to store the plugin names by ID
+        plugin_names = {}
+        # Loop through each row in the CSV file
+        for row in csv_reader:
+            # Get the plugin ID, name, and severity from the row
+            plugin_id = row[0]
+            plugin_name = row[7]
+            severity = row[3]
+            # Add the plugin name to the dictionary with the ID as the key
+            plugin_names[plugin_id] = plugin_name
+            # Check if the plugin ID is not in the JSON file and severity is at least low
+            if plugin_id not in all_plugin_ids and severity in ['Low', 'Medium', 'High', 'Critical']:
+                plugin_ids_not_in_json.append(plugin_id)
+
+    # Open the JSON file
+    with open('plugin_config.json', 'r+') as json_file:
+        # Load the JSON data into a dictionary
+        data = json.load(json_file)
+        # Get the "ids" key from each plugin in the "plugins" dictionary
+        plugin_id_sets = [set(plugin["ids"]) for plugin in data["plugins"].values()]
+        # Flatten the list of sets into a single set of all plugin IDs
+        all_plugin_ids = set().union(*plugin_id_sets)
+        # Find the intersection between the plugin IDs from the CSV file and the plugin IDs in the JSON file
+        matching_plugin_ids = all_plugin_ids.intersection(plugin_names.keys())
+        plugin_ids_not_in_json = list(set(plugin_ids_not_in_json))
+        # Add missing plugin IDs to the JSON file
+        added_plugin_ids = []
+        for plugin_id in plugin_ids_not_in_json:
+            plugin_name = plugin_names[plugin_id].replace(' ', '_').lower()
+            # Check if the plugin ID is already in the JSON file
+            if plugin_id in all_plugin_ids:
+                continue
+            # Create a new dictionary for the missing plugin ID
+            missing_plugin = {"ids": [plugin_id], "option": "{{serviceVersion}}"}
+            # Add the missing plugin to the "plugins" dictionary in the JSON file
+            if plugin_name in data["plugins"]:
+                data["plugins"][plugin_name]["ids"].append(plugin_id)
+            else:
+                data["plugins"][plugin_name] = missing_plugin
+                added_plugin_ids.append(plugin_id)
+                print(c.bold, f"Added plugin {plugin_name} with ID {plugin_id} to JSON file.")
+
+        # Write the updated JSON data back to the file
+        json_file.seek(0)
+        json.dump(data, json_file, indent=4)
+
+    # Print the matching plugin names
+    print(c.bold,"Supported plugins:")
+    for plugin_id in matching_plugin_ids:
+        plugin_name = plugin_names[plugin_id]
+        print(c.blue, plugin_name)
+
+    # Print the plugin IDs with at least low severity that were added to the JSON file
+    if added_plugin_ids:
+        print(c.bold,"Plugin IDs with at least low severity that were added to the JSON file:", c.rc)
+        for plugin_id in added_plugin_ids:
+            plugin_name = plugin_names.get(plugin_id)
+            if plugin_name:
+                print(c.green, plugin_id, '-', plugin_name)
+    else:
+        print(c.yellow, "No plugins were added to the file!")
+
+
+
+
 
 class PluginConfig:
     def __init__(self):
         config_file = "plugin_config.json"
         with open(config_file) as f:
             config = json.load(f)
-        
         self.serviceVersion = config.get('serviceVersion', '-sC -sV')
         self.osVersion = config.get('osVersion', 'sudo nmap -sC -sV -O')
         self.sslCert = config.get('sslCert', '--script ssl-cert')
@@ -238,33 +318,36 @@ class Lackey:
             self.verify_scans(plugin_id, script, execute_nmap=True, plugin_name=plugin_name)
 
     
-    def zip_evidence(self):
-        directory = self.make_evidence
-        zip_name = "evidence.zip"
-        zip_file = zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED)
-        print("Zipping evidence ...")
-        for file_name in os.listdir(directory):
-        # Ignore subdirectories
-            if not os.path.isdir(file_name):
-            # Add the file to the zip file
-                zip_file.write(os.path.join(directory, file_name), file_name)
-        zip_file.close() 
+    # def zip_evidence(self):
+    #     directory = self.make_evidence
+    #     zip_name = "evidence.zip"
+    #     zip_file = zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED)
+    #     print("Zipping evidence ...")
+    #     for file_name in os.listdir(directory):
+    #     # Ignore subdirectories
+    #         if not os.path.isdir(file_name):
+    #         # Add the file to the zip file
+    #             zip_file.write(os.path.join(directory, file_name), file_name)
+    #     zip_file.close() 
     
-            
+    
+
+    
             
     def execute_checks(self, ip, port, name, script, execute_custom=False, execute_nmap=False, plugin_name=None):
         with LogContext("Analyzing results") as p:
             nmap = "nmap -T4"
             c = Colours()
+            content = ''
             try:
-                
                 output_file = "evidence/{}.txt".format(plugin_name)
                 if self.args.external:
                     print(c.yellow,"Evidence output files will be marked with the external flag")
                     output_file = "evidence/external-{}.txt".format(plugin_name)
-                print(c.blue,f"Testing {ip}:{port} for {name}")
+                
 
                 if self.args.local:
+                    print(c.blue,f"Testing {ip}:{port} for {name}")
                     if execute_custom and self.args.local:
                         output = subprocess.run([f'{script} {ip} '], capture_output=True, shell=True, check=True)
                     elif execute_nmap and self.args.local:
@@ -274,8 +357,18 @@ class Lackey:
                     with open(output_file, "r") as f:
                         content = f.read()
                 
+                # if self.args.supported:
+                #     supported_file = "supported_plugins.txt"
+                #     with open(supported_file, "a") as f:
+                #         f.write(f"{name}\n")
+                #     with open(supported_file, "r") as f:
+                #         contents = f.read()
+                #         print(contents)
+                        
+                   
 
-                if not self.args.local:
+                else:
+                    print(c.blue,f"Testing {ip}:{port} for {name}")
                     drone = Drone(self.drone, self.username, self.password)
                     if execute_custom:
                         cmd = f'{script} {ip} '
@@ -299,7 +392,6 @@ class Lackey:
                         with open(output_file, "r") as f:
                             content = f.read()
 
-                
                 
                 
                 if "Host seems down" in content or "0 hosts up" in content or "closed" in content:
@@ -907,6 +999,7 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--scan-file", dest="scan_file", required=False, help="scan results file")
     parser.add_argument("-f ", "--csv-file", dest="file", required=False, help="Path/to/nessus_scan_results.csv")
     parser.add_argument("-x", "--external", dest="external", required=False, action="store_const", const=True, help="used if drone is 'pendrone'")
+    parser.add_argument("-q", "--supported", dest="supported", required=False, action="store_const", const=True, help="prints a list of supported plugins based off user provided csv")
     parser.add_argument("-l", "--local", dest="local", required=False, action="store_const", const=True, help="run manual checks on your local machine instead of over ssh")
     args = parser.parse_args()
     c = Colours()
@@ -920,21 +1013,33 @@ if __name__ == "__main__":
         
     if args.mode == "manual":
         # Nessus.get_auth = True
-        if not args.file:
+        if args.supported:
+            get_supported_plugins()
+            exit()
+            # plugin_config = PluginConfig()
+            # plugin_id = Lackey.plugin_config.plugins["ids"]
+            # supported_plugins = Lackey.get_supported_plugins(args.file,plugin_id)
+            # print("Supported plugins:")
+            # for plugin in supported_plugins:
+            #     print("- {}".format(plugin))
+            # sys.exit()
+            
+        if args.supported and not args.file:
             log.error("You must provide a csv file (-f)")
             exit()
         if not args.file.endswith(".csv"):
             print(c.red,"Error: The file must be of type .csv")
             exit()
-        if os.path.isfile(args.file) and args.file.endswith(".csv") and args.local:
+    
+        elif os.path.isfile(args.file) and args.file.endswith(".csv") and args.local:
             print(c.green,"File exists:", args.file)
             print(c.blue,"Running script with local checks enabled")
             username = None
             password = None
-        elif os.path.isfile(args.file) and args.file.endswith(".csv"):
+        elif os.path.isfile(args.file) and args.file.endswith(".csv") and not args.supported:
             print(c.green,"File exists:", args.file)
             username, password = get_creds()
-        else:
+        if not os.path.isfile(args.file):
             print(c.red,"File does not exist:", args.file)
             exit()
         
