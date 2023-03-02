@@ -782,9 +782,7 @@ class Nessus:
 
     def export_scan(self):
         try:
-            # get scan id
             scan_id = self.get_scan_info()["id"]
-            # template_id = "49"
             # nessus_version = requests.get(self.url + "/server/properties", headers=self.token_auth, verify=False)
             # version_info = nessus_version.json()
             # ui_version = version_info.get("nessus_ui_version")
@@ -792,8 +790,8 @@ class Nessus:
             #     template_id = "Vulnerabilites By Plugin" # Detailed vulns by plugin 
             #     # 214
             # else:
-                
-# ############ Removed the below code as the url is different between nessus 8 and nessus 10 but the template ID is the same
+            
+            ## This is the best way I could think of going about this, so many issues with the template name 
             response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
             templates = json.loads(response.text)
             with open("tmp.csv", "w") as f:
@@ -1012,13 +1010,6 @@ if __name__ == "__main__":
         if args.supported:
             get_supported_plugins()
             exit()
-            # plugin_config = PluginConfig()
-            # plugin_id = Lackey.plugin_config.plugins["ids"]
-            # supported_plugins = Lackey.get_supported_plugins(args.file,plugin_id)
-            # print("Supported plugins:")
-            # for plugin in supported_plugins:
-            #     print("- {}".format(plugin))
-            # sys.exit()
             
         if args.supported and not args.file:
             log.error("You must provide a csv file (-f)")
