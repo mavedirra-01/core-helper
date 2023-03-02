@@ -47,7 +47,8 @@ python deployer.py -m manual -d localhost -f <PATH/TO/REQUIRED-CSV-FILE.CSV> --l
 You can then replace the FIXME with the manual script used to verify the finding or leave it as a FIXME and the script will skip that finding. 
 
 ## Coming soon
-- keywords to seperate new plugin imports (-q) and automate to process so no manual changing of "FIXME" required
+- keywords to seperate new plugin imports (-q) and automate the process so no manual changing of "FIXME" is required
+- fix the "deploy" mode issue 
 
 ## Known issues
 - "deploy" mode will fail once reauthentication with nessus is required but the "monitor" mode works perfectly fine.
