@@ -18,7 +18,7 @@ The purpose of this tool is to parse nessus CSV files and run the manual checks 
 # Default method
 python deployer.py -m manual -d <DRONE-NAME> -f <PATH/TO/REQUIRED-CSV-FILE.CSV>
 
-# Checking the list of supported plugins
+# Checking the list of supported plugins and add any missing ones with FIXME as the script
 python deployer.py -m manual -f <REQUIRED-CSV-FILE.CSV> -q
 
 # Checking external findings with pendrone
