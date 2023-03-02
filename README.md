@@ -44,7 +44,7 @@ python deployer.py -m manual -d localhost -f <PATH/TO/REQUIRED-CSV-FILE.CSV> --l
             "option": "FIXME"
         },
 ```
-You can then replace the FIXME with the manual script used to verify the finding or leave it as a FIXME and the script will skip that finding. 
+You can then replace the FIXME with the command used to verify the finding or leave it as a FIXME and the script will skip that finding. 
 
 ## Coming soon
 - keywords to seperate new plugin imports (-q) and automate the process so no manual changing of "FIXME" is required
