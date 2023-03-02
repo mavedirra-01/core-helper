@@ -37,6 +37,7 @@ python deployer.py -m manual -d localhost -f <PATH/TO/REQUIRED-CSV-FILE.CSV> --l
 -x, --external : Used to add the "external-" name to the evidence file names so the user can tell which is internal vs external. Only really used if connecting to pendrone. 
 
 -q, --supported : checks the "plugin_config.json" file against the user provided csv file, it will then print a list of plugins that match both the json and the csv files, creating a list of plugins that will be checked. If a plugin does not exist in the file it will create a new entry in the following format:
+```
 ```json
 "ip_forwarding_enabled": {
             "ids": [
@@ -44,7 +45,7 @@ python deployer.py -m manual -d localhost -f <PATH/TO/REQUIRED-CSV-FILE.CSV> --l
             ],
             "option": "FIXME"
         },
-
+```
 You can then replace the FIXME with the manual script used to verify the finding or leave it as a FIXME and the script will skip that finding. 
 ```
 
