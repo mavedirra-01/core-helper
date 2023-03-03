@@ -7,7 +7,6 @@ import ipaddress
 import getpass
 import json
 import signal
-# import msvcrt
 import os
 import paramiko
 import pathlib
@@ -15,10 +14,9 @@ import re
 import requests, urllib3
 import sys
 import csv
-import io
 import logging as log
 import time
-import zipfile
+#import zipfile
 import subprocess
 import xml.etree.ElementTree as XML
 requests.packages.urllib3.disable_warnings()
@@ -28,10 +26,8 @@ log.basicConfig(level=log.INFO)
 
 ## TO DO 
 # nessus reathentication issue on deploy but not on monitor???
-# improve readme 
 # use scan file instead of file
 # add metasploit checks
-
 # improve logging and colours
 # Improve json appending to also include nmap/custom command use a list of keywords to create catagories
 
@@ -39,6 +35,7 @@ log.basicConfig(level=log.INFO)
 
 # Done
 # allow for local scans with subproccess 
+# improve readme
 # fix nessus html template issue - workaround is writing output to csv file then reading the csv to see if string matches
 # no idea why this is the fix but it appears to be working as intended now
 # add query functionality
@@ -142,7 +139,7 @@ def get_supported_plugins():
     #
     plugin_ids_not_in_json = []
     all_plugin_ids = set()
-    with open(args.file, 'r') as csv_file:
+    with open(args.file, 'r', encoding="utf8") as csv_file:
         csv_reader = csv.reader(csv_file)
         # Skip the header row
         next(csv_reader)
