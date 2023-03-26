@@ -26,7 +26,6 @@ log.basicConfig(level=log.INFO)
 
 ## TO DO 
 # nessus reathentication issue on deploy but not on monitor???
-# use scan file instead of file
 # add metasploit checks
 # improve logging and colours
 # Improve json appending to also include nmap/custom command use a list of keywords to create catagories
