@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Deployer - A nessus utility to deploy scans and analyses
+# A nessus utility to deploy scans and analyses
 # author: Joey Melo, Connor Fancy
 # version: v1.0.0
 import argparse
@@ -25,11 +25,10 @@ log.basicConfig(level=log.INFO)
 
 
 ## TO DO 
-# nessus reathentication issue on deploy but not on monitor???
 # add metasploit checks
 # improve logging and colours
 # Improve json appending to also include nmap/custom command use a list of keywords to create catagories
-
+# Option to decom drone once done with project
 
 
 # Done
@@ -82,7 +81,7 @@ class Drone():
                 Drone.ssh.exec_command('export TERM=xterm')
 
         except Exception as e:
-            log.error(e.args[0])
+            log.error("Can't connect to the drone, do you have the VPN connection enabled?")
             exit()
     
     def download(self, remote_file):
@@ -132,7 +131,7 @@ class Drone():
 
 
 def get_supported_plugins():
-    # Keywords to catogorize findings, this is the best method i can currently think of. 
+    # TO DO Keywords to catogorize findings, this is the best method i can currently think of. 
     
     
     #
@@ -406,86 +405,86 @@ class Lackey:
         
 
 
-class Analyzer:
-    def __init__(self, scan_file, output_folder):
-        self.tree = XML.parse(scan_file)
-        self.root = self.tree.getroot()
-        self.output_folder = output_folder
+# class Analyzer:
+#     def __init__(self, scan_file, output_folder):
+#         self.tree = XML.parse(scan_file)
+#         self.root = self.tree.getroot()
+#         self.output_folder = output_folder
 
-    def vulnerabilities(self):
-        findings = {}
-        hosts = self.root.findall(".//ReportHost")
+#     def vulnerabilities(self):
+#         findings = {}
+#         hosts = self.root.findall(".//ReportHost")
 
-        for host in hosts:
-            ip = host.get("name")
-            vulnerabilities = host.findall(".//ReportItem")
+#         for host in hosts:
+#             ip = host.get("name")
+#             vulnerabilities = host.findall(".//ReportItem")
 
-            for vulnerability in vulnerabilities:
-                try:
-                    # ignore info findings
-                    if vulnerability.get("severity") == "0": continue
+#             for vulnerability in vulnerabilities:
+#                 try:
+#                     # ignore info findings
+#                     if vulnerability.get("severity") == "0": continue
 
-                    # fetch data
-                    name = vulnerability.find(".//plugin_name").text
-                    exploitable = vulnerability.find(".//exploit_available").text
-                    plugin_id = vulnerability.get("pluginID")
-                    port = vulnerability.get("port")
-                    cves = vulnerability.findall(".//cve")
-                    cve_list = []
-                    for cve in cves:
-                        cve_list.append(cve.text)
+#                     # fetch data
+#                     name = vulnerability.find(".//plugin_name").text
+#                     exploitable = vulnerability.find(".//exploit_available").text
+#                     plugin_id = vulnerability.get("pluginID")
+#                     port = vulnerability.get("port")
+#                     cves = vulnerability.findall(".//cve")
+#                     cve_list = []
+#                     for cve in cves:
+#                         cve_list.append(cve.text)
 
-                    # only care about findings with publicly available exploits
-                    if exploitable == "true":
-                        if plugin_id in findings:
-                            findings[plugin_id]["hosts"].append(ip + ":" + port)
+#                     # only care about findings with publicly available exploits
+#                     if exploitable == "true":
+#                         if plugin_id in findings:
+#                             findings[plugin_id]["hosts"].append(ip + ":" + port)
 
-                        else:
-                            findings[plugin_id] = {
-                                "name": name,
-                                "cves": cve_list,
-                                "hosts": [ip + ":" + port]
-                            }
+#                         else:
+#                             findings[plugin_id] = {
+#                                 "name": name,
+#                                 "cves": cve_list,
+#                                 "hosts": [ip + ":" + port]
+#                             }
 
-                except Exception as e:
-                    continue
+#                 except Exception as e:
+#                     continue
 
-        file_path = os.path.join(self.output_folder / "exploitable-findings.txt")
-        with open(file_path, "a") as f:
-            f.write("Findings identified in Nessus file with publicly available exploits:\n\n")
-            for k,v in findings.items():
-                f.write(f'Finding: {v["name"]}\n')
-                f.write(f'Plugin ID: {k}\n')
-                f.write(f'CVEs: {v["cves"]}\n')
-                f.write(f'Hosts: {v["hosts"]}\n\n')
+#         file_path = os.path.join(self.output_folder / "exploitable-findings.txt")
+#         with open(file_path, "a") as f:
+#             f.write("Findings identified in Nessus file with publicly available exploits:\n\n")
+#             for k,v in findings.items():
+#                 f.write(f'Finding: {v["name"]}\n')
+#                 f.write(f'Plugin ID: {k}\n')
+#                 f.write(f'CVEs: {v["cves"]}\n')
+#                 f.write(f'Hosts: {v["hosts"]}\n\n')
 
-            f.close()
+#             f.close()
 
-    def web_directories(self):
-        hosts = self.root.findall(".//ReportHost")
-        web_directories = {}
-        for host in hosts:
-            for item in host.findall(".//ReportItem"):
-                plugin_id = item.get("pluginID")
-                if plugin_id == "11032":
-                    ip = host.get("name")
-                    plugin_output = item.find(".//plugin_output").text
-                    try:
-                        clean_output = re.search(r"(/.*)", plugin_output)[1]
-                    except:
-                        continue
-                    port = item.get("port")
-                    hostname = ip + ":" + port
-                    clean_output = clean_output.replace("//", "") # FIX THIS
-                    web_directories[hostname] = clean_output.split(", ")
+#     def web_directories(self):
+#         hosts = self.root.findall(".//ReportHost")
+#         web_directories = {}
+#         for host in hosts:
+#             for item in host.findall(".//ReportItem"):
+#                 plugin_id = item.get("pluginID")
+#                 if plugin_id == "11032":
+#                     ip = host.get("name")
+#                     plugin_output = item.find(".//plugin_output").text
+#                     try:
+#                         clean_output = re.search(r"(/.*)", plugin_output)[1]
+#                     except:
+#                         continue
+#                     port = item.get("port")
+#                     hostname = ip + ":" + port
+#                     clean_output = clean_output.replace("//", "") # FIX THIS
+#                     web_directories[hostname] = clean_output.split(", ")
 
-        file_path = os.path.join(self.output_folder / "web-directories.json")
-        with open(file_path, "w") as f:
-            json.dump(web_directories, f, indent=4)
+#         file_path = os.path.join(self.output_folder / "web-directories.json")
+#         with open(file_path, "w") as f:
+#             json.dump(web_directories, f, indent=4)
 
-    def run_eyewitness(self):
-        # we don't interact with the drone in this class
-        pass
+#     def run_eyewitness(self):
+#         # we don't interact with the drone in this class
+#         pass
 
 class Nessus:
     def __init__(self, drone, username, password, mode, project_name, policy_file, targets_file, scan_file, exclude_file, output_folder):
@@ -494,9 +493,9 @@ class Nessus:
         self.drone = drone
         self.username = username
         self.password = password
-        if scan_file:
-            self.analyze_results(scan_file)
-            exit()
+        # if scan_file:
+        #     self.analyze_results(scan_file)
+        #     exit()
 
         self.url = "https://" + drone + ":8834"
         self.project_name = project_name
@@ -787,7 +786,7 @@ class Nessus:
             #     # 214
             # else:
             
-            ## This is the best way I could think of going about this, so many issues with the template name 
+            ## This is the best way I could think of going about this, sooooo many issues with the template name 
             response = requests.get(self.url + f"/reports/custom/templates", headers=self.token_auth, verify=False)
             templates = json.loads(response.text)
             with open("tmp.csv", "w") as f:
@@ -892,26 +891,26 @@ class Nessus:
                 p.failure(e.args[0])
                 exit()
                 
-    def analyze_results(self, scan_file):
-            with LogContext("Analyzing results") as p:
-                try:
-                    analyze = Analyzer(scan_file, self.output_folder)
-                    drone = Drone(self.drone, self.username, self.password)
+    # def analyze_results(self, scan_file):
+    #         with LogContext("Analyzing results") as p:
+    #             try:
+    #                 analyze = Analyzer(scan_file, self.output_folder)
+    #                 drone = Drone(self.drone, self.username, self.password)
 
-                    p.status(f"Parsing exploitable vulnerabilities")
-                    analyze.vulnerabilities()
-                    p.status(f"Parsing web directories found")
-                    analyze.web_directories()
-                    p.status(f"Running eyewitness (results in /tmp/eyewitness on drone)")
-                    remote_file = drone.upload(scan_file)
-                    drone.execute(f"eyewitness -x {remote_file} -d /tmp/eyewitness --no-prompt")
-                    drone.close()
+    #                 p.status(f"Parsing exploitable vulnerabilities")
+    #                 analyze.vulnerabilities()
+    #                 p.status(f"Parsing web directories found")
+    #                 analyze.web_directories()
+    #                 p.status(f"Running eyewitness (results in /tmp/eyewitness on drone)")
+    #                 remote_file = drone.upload(scan_file)
+    #                 drone.execute(f"eyewitness -x {remote_file} -d /tmp/eyewitness --no-prompt")
+    #                 drone.close()
 
-                    p.success()
+    #                 p.success()
 
-                except Exception as e:
-                    log.error(e.args[0])
-                    exit()
+    #             except Exception as e:
+    #                 log.error(e.args[0])
+    #                 exit()
 
     # Mode handlers
     def deploy(self):
@@ -921,7 +920,7 @@ class Nessus:
         self.create_scan(True)
         self.monitor_scan()
         scan_file = self.export_scan()
-        self.analyze_results(scan_file)
+        # self.analyze_results(scan_file)
 
     def trigger(self):
         self.exclude_targets()
@@ -933,7 +932,7 @@ class Nessus:
         self.scan_action("launch")
         self.monitor_scan()
         scan_file = self.export_scan()
-        self.analyze_results(scan_file)
+        # self.analyze_results(scan_file)
 
     def pause(self):
         self.scan_action("pause")
@@ -942,7 +941,7 @@ class Nessus:
         self.scan_action("resume")
         self.monitor_scan()
         scan_file = self.export_scan()
-        self.analyze_results(scan_file)
+        # self.analyze_results(scan_file)
 
     def export(self):
         self.export_scan()
@@ -968,7 +967,7 @@ if __name__ == "__main__":
                  "deployer.py -d localhost -m manual -f nessus_file.csv --local\n" \
                  "deployer.py -d pendrone -m manual -f nessus_file.csv --external"
     )
-    parser.add_argument("-m", "--mode", required=True, choices=["deploy","trigger","launch","pause","resume","monitor","export","analyze", "manual"], help="" \
+    parser.add_argument("-m", "--mode", required=True, choices=["deploy","trigger","launch","pause","resume","monitor","export","manual"], help="" \
         "choose mode to run Nessus:\n" \
         "deploy: update settings, upload policy file, upload targets file, launch scan, monitor scan, export results, analyze results\n" \
         "trigger: update settings, upload policy file, upload targets files\n" \
@@ -977,7 +976,6 @@ if __name__ == "__main__":
         "resume: resume scan, export results, analyze results\n" \
         "monitor: monitor scan\n" \
         "export: export scan results, analyze results\n" \
-        "analyze: analyze scan file (output exploitable findings, ports matrix, and web directories found)\n"
         "manual: perform nmap scans and manual finding verification"
     )
     parser.add_argument("-d", "--drone", required=True, help="drone name or IP")
@@ -1091,9 +1089,9 @@ if __name__ == "__main__":
         log.info("Exporting scan results")
         nessus.export()
 
-    elif args.mode == "analyze":
-        log.info("Analyzing scan results")
-        nessus.analyze_results()
+    # elif args.mode == "analyze":
+    #     log.info("Analyzing scan results")
+    #     nessus.analyze_results()
 
     elif args.mode == "manual":
         print(c.green,f"Performing manual testing\n{c.yellow} All scan output will be saved in the {c.bold}evidence{c.rc} directoy{c.rc}")
