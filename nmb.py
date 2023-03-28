@@ -29,7 +29,7 @@ log.basicConfig(level=log.INFO)
 # improve logging and colours
 # Improve json appending to also include nmap/custom command use a list of keywords to create catagories
 # Option to decom drone once done with project
-
+# add ability for 'deploy' mode to run the manual checks once the scan has exported
 
 # Done
 # allow for local scans with subproccess 
@@ -1039,7 +1039,7 @@ if __name__ == "__main__":
             exit()
         username, password = get_creds()
 
-    # Initialize nessus
+    # execute checks
     execute = Lackey(
         drone=args.drone,
         username=username,
@@ -1047,6 +1047,7 @@ if __name__ == "__main__":
         file_path=args.file,
         mode=args.mode
     )
+    # Initialize nessus
     nessus = Nessus(
         drone=args.drone,
         username=username,
