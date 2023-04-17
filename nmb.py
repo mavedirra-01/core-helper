@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # A nessus utility to deploy scans and analyses
-# author: Joey Melo, Connor Fancy
 # version: v1.0.0
 import argparse
 import ipaddress
@@ -22,6 +21,7 @@ import xml.etree.ElementTree as XML
 requests.packages.urllib3.disable_warnings()
 log.basicConfig(level=log.INFO)
 # import xml.etree.ElementTree as ET
+
 
 
 ## TO DO 
@@ -385,7 +385,7 @@ class Lackey:
 
                 
                 
-                if "Host seems down" in content or "0 hosts up" in content or "closed" in content:
+                if "Host seems down" in content or "0 hosts up" in content :
                     return "down"
                 elif "filtered" in content or "ERROR" in content:
                     return "unknown"
@@ -1097,3 +1097,4 @@ if __name__ == "__main__":
     elif args.mode == "manual":
         print(c.green,f"Performing manual testing\n{c.yellow} All scan output will be saved in the {c.bold}evidence{c.rc} directoy{c.rc}")
         execute.manual_tests()		
+    

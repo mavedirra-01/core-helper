@@ -149,13 +149,13 @@
             ],
             "option": "{{serviceVersion}}"
         },
-        "unix_os_version": {
+        "custom_unix_os_version": {
             "ids": [
                 "33850"
             ],
             "option": "{{osVersion}}"
         },
-        "windows_os_version": {
+        "custom_windows_os_version": {
             "ids": [
                 "108797"
             ],
