@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # A nessus utility to deploy scans and analyses
-# version: v1.0.0
+# version: v1.0.1
 import argparse
 import ipaddress
 import getpass
@@ -9,80 +9,94 @@ import signal
 import os
 import paramiko
 import pathlib
+import colorlog
 import re
 import requests, urllib3
 import sys
 import csv
-import logging as log
+import logging
 import time
 #import zipfile
 import subprocess
 import xml.etree.ElementTree as XML
 requests.packages.urllib3.disable_warnings()
-log.basicConfig(level=log.INFO)
+# 
+
 # import xml.etree.ElementTree as ET
 
 
 
 ## TO DO 
 # add metasploit checks
-# improve logging and colours
 # Improve json appending to also include nmap/custom command use a list of keywords to create catagories
 # Option to decom drone once done with project
 # add ability for 'deploy' mode to run the manual checks once the scan has exported
 
 # Done
+# made ctrl+c able to be used everywhere
+# improve logging and error handling
+# added -Pn nmap functionality and better confirmation
+# added tag to files user has to manually check
 # allow for local scans with subproccess 
 # improve readme
 # fix nessus html template issue - workaround is writing output to csv file then reading the csv to see if string matches
 # no idea why this is the fix but it appears to be working as intended now
 # add query functionality
-class Colours:
-    def __init__(self):
-        self.green = "\033[32m[+]\033[0m"
-        self.red = "\033[91m[-]\033[0m"
-        self.bold = '\033[1m'
-        self.blue = '\033[94m[-->]\033[0m'
-        self.yellow = '\033[93m[!]\033[0m'
-        self.rc = '\033[0m'
 
-class LogContext:
-    def __init__(self, message):
-        self.message = message
+log = logging.getLogger()
+log.setLevel(logging.INFO)
 
-    def __enter__(self):
-        log.info(self.message)
-        return self
 
-    def failure(self, message):
-        log.error(message)
+# Define log formats with color
+formatter = colorlog.ColoredFormatter(
+    '%(log_color)s - %(message)s',
+    datefmt=None,
+    reset=True,
+    log_colors={
+        'DEBUG': 'cyan',
+        'WARNING': 'yellow',
+        'INFO': 'blue',
+        'ERROR': 'red',
+        'CRITICAL': 'bold_green'
+    },
+    secondary_log_colors={},
+    style='%'
+)
 
-    def status(self, message):
-        log.info(f"[STATUS] {message}")
+# Add file handler
+file_handler = logging.FileHandler('nmb-logfile.log')
+file_handler.setFormatter(formatter)
+log.addHandler(file_handler)
 
-    def success(self, message=None):
-        log.info(f"[SUCCESS] {message}" if message else "[SUCCESS]")
+# Add console handler with color
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(formatter)
+log.addHandler(console_handler)
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        if exc_type:
-            self.failure(exc_value)
-        else:
-            self.success()    
+
+def signal_handler(signal, frame):
+    # Handle the Ctrl+C signal here
+    log.warning("\nCtrl+C detected. Exiting...")
+    sys.exit(0)
+
+
 
 class Drone():
     ssh = None  # class attribute to store the SSH connection
-
     def __init__(self, hostname, username, password):
-        try:
-            if not Drone.ssh:  # if no SSH connection exists, create one
-                Drone.ssh = paramiko.SSHClient()
-                Drone.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                Drone.ssh.connect(hostname=hostname, username=username, password=password)
-                Drone.ssh.exec_command('export TERM=xterm')
+        if args.local:
+            pass
+        else:
+            try:
+                if not Drone.ssh:  # if no SSH connection exists, create one
+                    Drone.ssh = paramiko.SSHClient()
+                    Drone.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                    Drone.ssh.connect(hostname=hostname, username=username, password=password)
+                    Drone.ssh.exec_command('export TERM=xterm')
 
-        except Exception as e:
-            log.error("Can't connect to the drone, do you have the VPN connection enabled?")
-            exit()
+            except Exception as e:
+                log.error(f"Can't connect to the drone, do you have the VPN connection enabled?\n{e}")
+                exit()
     
     def download(self, remote_file):
         try:
@@ -181,27 +195,27 @@ def get_supported_plugins():
             else:
                 data["plugins"][plugin_name] = missing_plugin
                 added_plugin_ids.append(plugin_id)
-                print(c.bold, f"Added plugin {plugin_name} with ID {plugin_id} to JSON file.")
+                log.info(f"Added plugin {plugin_name} with ID {plugin_id} to JSON file.")
 
         # Write the updated JSON data back to the file
         json_file.seek(0)
         json.dump(data, json_file, indent=4)
 
     # Print the matching plugin names
-    print(c.bold,"Supported plugins:")
+    log.info("Supported plugins:")
     for plugin_id in matching_plugin_ids:
         plugin_name = plugin_names[plugin_id]
-        print(c.blue, plugin_name)
+        log.info(plugin_name)
 
     # Print the plugin IDs with at least low severity that were added to the JSON file
     if added_plugin_ids:
-        print(c.bold,"Plugin IDs with at least low severity that were added to the JSON file:", c.rc)
+        log.info("Plugin IDs with at least low severity that were added to the JSON file:")
         for plugin_id in added_plugin_ids:
             plugin_name = plugin_names.get(plugin_id)
             if plugin_name:
-                print(c.green, plugin_id, '-', plugin_name)
+                log.info(f"{plugin_id} - {plugin_name}")
     else:
-        print(c.yellow, "No plugins were added to the file!")
+        log.warning("No plugins were added to the file!")
 
 
 
@@ -210,14 +224,15 @@ def get_supported_plugins():
 class PluginConfig:
     def __init__(self):
         config_file = "plugin_config.json"
+        nmap_base = "nmap -T4"
         with open(config_file) as f:
             config = json.load(f)
-        self.serviceVersion = config.get('serviceVersion', '-sC -sV')
-        self.osVersion = config.get('osVersion', 'sudo nmap -sC -sV -O')
-        self.sslCert = config.get('sslCert', '--script ssl-cert')
-        self.sshCiphers = config.get('sshCiphers', '--script ssh2-enum-algos')
-        self.sslCiphers = config.get('sslCiphers', '--script ssl-enum-ciphers')
-        self.redisInfo = config.get('redisInfo', 'redis-cli -h {} info && sleep 1 && echo -e "quit\n"')
+        self.serviceVersion = config.get('serviceVersion', f'{nmap_base} -sC -sV')
+        self.osVersion = config.get('osVersion', 'sudo nmap -T4 -sC -sV -O {ip}')
+        self.sslCert = config.get('sslCert', f'{nmap_base} --script ssl-cert')
+        self.sshCiphers = config.get('sshCiphers', f'{nmap_base} --script ssh2-enum-algos')
+        self.sslCiphers = config.get('sslCiphers', f'{nmap_base} --script ssl-enum-ciphers')
+        self.redisInfo = config.get('redisInfo', 'redis-cli -h {ip} info && sleep 1 && echo -e "quit\n"')
         self.plugins = config.get('plugins', {})
         for plugin_name, plugin_config in self.plugins.items():
             if "option" in plugin_config:
@@ -233,7 +248,6 @@ class PluginConfig:
 
 class Lackey:
     def __init__(self, file_path, drone, username, password, mode):
-        signal.signal(signal.SIGINT, self.signal_handler)
         self.file_path = file_path
         self.drone = drone
         self.args = parser.parse_args()
@@ -243,14 +257,13 @@ class Lackey:
         self.make_evidence = "evidence"
         if not os.path.exists(self.make_evidence):
             os.makedirs(self.make_evidence)
-        
+        self.unknown_files = []
 
-    def signal_handler(self, signal, frame):
-        # Handle the Ctrl+C signal here
-        print("Ctrl+C detected. Exiting...")
-        sys.exit(0)
+
     
     def parse_user_csv(self, plugin_ids):
+        if not plugin_ids:
+            return None, [], []
         ips = []
         ports = []
         name = ''
@@ -268,141 +281,156 @@ class Lackey:
         #ips = list(set(ips))
         return name, ips, ports
 
-    def verify_scans(self, plugin_id, script, execute_custom=False, execute_nmap=False, plugin_name=None):
-        c = Colours()
+    def verify_scans(self, plugin_id, script, plugin_name=None):
         name, ips, ports = self.parse_user_csv(plugin_id)
         valid_scan_found = False
-        with LogContext("Verifying IP addresses") as p:
-            try:
-                for i in range(len(ips)):
-                    if valid_scan_found:
+        try:
+            for i, (ip, port) in enumerate(zip(ips, ports)):
+                status = self.execute_checks(ip, port, name, script, plugin_name=plugin_name)
+                if status == "down":
+                    if i == len(ips) - 1:
+                        log.error(f"Error: All IP addresses are down - {name}")
                         break
-                    ip = ips[i]
-                    port = ports[i]
-                    status = self.execute_checks(ip, port, name, script, execute_custom, execute_nmap, plugin_name=plugin_name)
-                    if status == "down":
-                        if i == len(ips) - 1:
-                            print(c.red,"Error: All IP addresses are down -", name)
-                            break
-                    elif status == "skip":
-                        print(c.yellow, "FIXME script detected, no check will be executed for: ", name)
-                        valid_scan_found = True
-                    elif status == "unknown":
-                        print(c.yellow,"Host may be down, unable to verify -", name)
-                        cmd = subprocess.run(f"nmap -Pn") ## find a way to return the nmap command as a value so it can be passed to other functions in the class, if you need to seperate the commands to do this then fine. 
-                        # valid_scan_found = True
-                        # break
-                    else:
-                        print(c.green,"Finding:", name, f"{c.bold}Verified{c.rc}")
-                        # Set the flag variable to indicate that a valid scan has been found
-                        valid_scan_found = True
-                        break
-            except Exception as e:
-                print(e)
-                exit()
-            
+                if status == "skip":
+                    log.warning(f"FIXME script detected, no check will be executed for: {name}")
+                    valid_scan_found = True
+                    break
+                if status == "unknown":
+                    log.warning(f"Host may be down, unable to verify - {name}")
+                    # break
+                if status == "up":
+                    log.critical(f"Finding: {name} - Verified")
+                    valid_scan_found = True
+                    break
+                    
+
+        except Exception as e:
+            log.error(f"Error: All IP addresses are down - {name}")
+            log.error(f"Error message: {e}")
+            exit()
+
+    def manual_tests(self):
+        for plugin_name in self.plugin_config.plugins.keys():
+            self.execute_plugin(plugin_name)
         
                     
     def execute_plugin(self, plugin_name):
         plugin_id = self.plugin_config.plugins[plugin_name]["ids"]
         script = self.plugin_config.plugins[plugin_name]["option"]
-        if plugin_name.startswith("custom"):
-            self.verify_scans(plugin_id, script, execute_custom=True, plugin_name=plugin_name)
-        elif self.args.local:
-            if plugin_name.startswith("custom"):
-                self.verify_scans(plugin_id, script, execute_custom=True, plugin_name=plugin_name)
+        self.verify_scans(plugin_id, script, plugin_name=plugin_name)
+    
+
+
+    def execute_checks(self, ip, port, name, script, plugin_name=None):
+        unknown_files = []
+        try:
+            output_file = os.path.join("evidence", f"{plugin_name}.txt")
+            if self.args.external:
+                log.warning("Evidence output files will be marked with the external flag")
+                output_file = os.path.join("evidence-external", f"{plugin_name}.txt")
+
+            if script == "FIXME":
+                return "skip"
+
+            if self.args.local:
+                output = self.execute_local(ip, port, script, name)
             else:
-                self.verify_scans(plugin_id, script, execute_nmap=True, plugin_name=plugin_name)
-        else:
-            self.verify_scans(plugin_id, script, execute_nmap=True, plugin_name=plugin_name)
+                output = self.execute_ssh(ip, port, script, name)
 
-    
-    # def zip_evidence(self):
-    #     directory = self.make_evidence
-    #     zip_name = "evidence.zip"
-    #     zip_file = zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED)
-    #     print("Zipping evidence ...")
-    #     for file_name in os.listdir(directory):
-    #     # Ignore subdirectories
-    #         if not os.path.isdir(file_name):
-    #         # Add the file to the zip file
-    #             zip_file.write(os.path.join(directory, file_name), file_name)
-    #     zip_file.close() 
-    
-    
+            state_pattern = re.compile(r"\d+\/\w+\s+(open|closed|filtered)\s+\w+")
+            match = state_pattern.search(output)
+            if match:
+                state = match.group(1)
 
-    
-            
-    def execute_checks(self, ip, port, name, script, execute_custom=False, execute_nmap=False, plugin_name=None):
-        with LogContext("Analyzing results") as p:
-            nmap = "nmap -T4"
-            c = Colours()
-            content = ''
-            
-            try:
-                output_file = "evidence/{}.txt".format(plugin_name)
-                if self.args.external:
-                    print(c.yellow,"Evidence output files will be marked with the external flag")
-                    output_file = "evidence/external-{}.txt".format(plugin_name) 
-                    
-                if script == "FIXME":
-                    return "skip"
-                
-                if self.args.local:
-                    print(c.blue,f"Testing {ip}:{port} for {name}")
-                    if execute_custom and self.args.local:
-                        output = subprocess.run([f'{script} {ip}'], capture_output=True, shell=True, check=True)
-                    elif execute_nmap and self.args.local:
-                        output = subprocess.run([f"{nmap} {script} -p {port} {ip}"], capture_output=True, shell=True, check=True)
-                    with open(output_file, "w") as f:
-                        f.write(output.stdout.decode())
-                    with open(output_file, "r") as f:
-                        content = f.read()
-
-                else:
-                    print(c.blue,f"Testing {ip}:{port} for {name}")
-                    drone = Drone(self.drone, self.username, self.password)
-                    if execute_custom:
-                        cmd = f'{script} {ip} '
-                        output = drone.execute(cmd)
-                        with open(output_file, "w") as f:
-                            f.write(output)
-                        with open(output_file, "r") as f:
-                            content = f.read()
-                    elif execute_nmap:
-                        cmd = f'{nmap} {script} -p {port} {ip} '
-                        output = drone.execute(cmd)
-                        with open(output_file, "w") as f:
-                            f.write(output)
-                        with open(output_file, "r") as f:
-                            content = f.read()
-                    if plugin_name == "redis_info":             #This is a temp fix for now, migrate to custom eventually#
-                        cmd = f"{script.format(ip)}"
-                        output = drone.execute(cmd)
-                        with open(output_file, "w") as f:
-                            f.write(output)
-                        with open(output_file, "r") as f:
-                            content = f.read()
-
-                
-                
-                if "Host seems down" in content or "0 hosts up" in content :
-                    return "down"
-                elif "filtered" in content or "ERROR" in content:
-                    return "unknown"
-                if "SNMP request timeout" in content or "request timed out" in content:
-                    return "down"
-                else:
+            if output:
+                    if state == "filtered":
+                        output_file = os.path.join("evidence", f"UNCONFIRMED-{plugin_name}.txt")
+                        write_output_to_file(output_file, output)
+                        content = read_output_from_file(output_file)
+                        self.unknown_files.append(output_file)
+                        return "unknown"
+                    if state == "closed":
+                        return "down"
+                    else:
+                        write_output_to_file(output_file, output)
+                        content = read_output_from_file(output_file)
+                        if "Unknown" in plugin_name and output_file not in unknown_files:
+                            unknown_files.append(output_file)
                     return "up"
+            else:
+                return "down"
+        except Exception as e:
+            log.error(f"Error executing plugin {name}: {e}")
+            return "error"
+
+
+    def execute_local(self, ip, port, script, name):
+        log.info(f"Testing {ip}:{port} for {name}")
+        try:
+            if "{ip}" in script:
+                script = script.format(ip=ip)
+                output = subprocess.check_output([f'{script}'], shell=True, universal_newlines=True)
+            else:
+                output = subprocess.check_output([f'{script} -p {port} {ip}'], shell=True, universal_newlines=True)
+            if not output or "Host is up" not in output:
+                output = self.retry_nmap(ip, port, script)
+            return output
+
+        except Exception as e:
+            log.error(f"Error message: {e}")
+
+    def execute_ssh(self, ip, port, script, name):
+        log.info(f"Testing {ip}:{port} for {name}")
+        drone = Drone(self.drone, self.username, self.password)
+        try:
+            if "{ip}" in script:
+                cmd = script.format(ip=ip)
+            else:
+                cmd = (f"{script} -p {port} {ip}")
+            output = drone.execute(cmd)
+            if "Host is up" not in output:
+                output = self.retry_nmap(ip, port, script, drone)
+            return output
+
+        except Exception as e:
+            log.error(f"Error message: {e}")
+
+    def retry_nmap(self, ip, port, script, drone=None):
+        for i in range(2):
+            try:
+                log.warning(f"Host {ip} is down. Retrying nmap with -Pn option. Retry: {i+1}")
+                if drone is not None:
+                    cmd = f"{script} -Pn -p {port} {ip}"
+                    cmd = drone.execute(cmd)
+                output = subprocess.check_output([f"{script} -Pn -p {port} {ip}"], shell=True, universal_newlines=True)
+                return output
 
             except Exception as e:
-                p.failure(e)
-        # self.zip_evidence()
-        # drone.close()
-        
-    def manual_tests(self):
-        for plugin_name in self.plugin_config.plugins.keys():
-            self.execute_plugin(plugin_name)
+                log.error(f"Error message: {e}")
+        return ""
+
+
+    def print_unknown_files(self):
+        if self.unknown_files:
+            unique_files = sorted(list(set(self.unknown_files)))
+            log.error("The following files were unable to be verified and require manual review:")
+            for file in unique_files:
+                log.warning(f"{file}")
+        else:
+            log.critical("No files require manual review.")
+
+
+
+
+def write_output_to_file(output_file, output):
+    with open(output_file, "w") as f:
+        f.write(output)
+
+
+def read_output_from_file(output_file):
+    with open(output_file, "r") as f:
+        return f.read()
+
         
 
 class Nessus:
@@ -450,28 +478,26 @@ class Nessus:
 
     # Auth handlers
     def get_auth(self, verbose=True):
-        with LogContext("Retrieving API tokens") as p:
-            try:
-                self.token_keys = self.get_tokens()
-                self.token_auth = {
-                    "X-Cookie": f"token={self.token_keys['cookie_token']}",
-                    "X-API-Token": self.token_keys["api_token"]
-                }
+        log.info("Retrieving API tokens")
+        try:
+            self.token_keys = self.get_tokens()
+            self.token_auth = {
+                "X-Cookie": f"token={self.token_keys['cookie_token']}",
+                "X-API-Token": self.token_keys["api_token"]
+            }
 
-                self.api_keys = self.get_api_keys()
-                self.api_auth = {
-                    "X-ApiKeys": "accessKey="+self.api_keys["accessKey"]+"; secretKey="+self.api_keys["secretKey"]
-                }
+            self.api_keys = self.get_api_keys()
+            self.api_auth = {
+                "X-ApiKeys": "accessKey="+self.api_keys["accessKey"]+"; secretKey="+self.api_keys["secretKey"]
+            }
 
-                if verbose:
-                    log.info("API tokens retrieved successfully.")
+            if verbose:
+                log.info("API tokens retrieved successfully.")
 
-            except Exception as e:
-                if p is not None:
-                    p.failure(e.args[0])
-                if verbose:
-                    log.error(f"Failed to retrieve API tokens: {e.args[0]}")
-                exit()
+        except Exception as e:
+            if verbose:
+                log.error(f"Failed to retrieve API tokens: {e.args[0]}")
+            exit()
 
     def get_tokens(self):
         # get X-Cookie token
@@ -497,154 +523,150 @@ class Nessus:
 
     # Engine
     def exclude_targets(self):
-        with LogContext("Adding targets to reject list") as p:
+        log.info("Adding targets to reject list")
+        try:
+            # Connect to the SSH server
+            log.info("Connecting to the ssh server")
+            drone = Drone(self.drone, self.username, self.password)
+
+            # Fetch drone IP
+            log.info("Getting drone IP")
+            cmd = 'ip a s eth0 | grep -o "inet .* brd" | grep -o "[0-9]*\\.[0-9]*\\.[0-9]*\\.[0-9]*"'
+            drone_ip = drone.execute(cmd).split("\n")[0]
+
+            # Add drone IP to nessus rules
+            log.info(f"Adding drone IP {drone_ip} to reject list")
+            cmd = f"echo 'reject {drone_ip}' | sudo tee -a /opt/nessus/etc/nessus/nessusd.rules"
+            drone.execute(cmd)
+
+            # Add targets provided from -e to nessus rules
             try:
-                # Connect to the SSH server
-                p.status("Connecting to the ssh server")
-                drone = Drone(self.drone, self.username, self.password)
+                log.info(f"Adding exclude targets from to reject list")
+                for exclude_target in self.exclude_file:
+                    exclude_target = exclude_target.rstrip()
+                    cmd = f"echo 'reject {exclude_target}' | sudo tee -a /opt/nessus/etc/nessus/nessusd.rules"
+                    drone.execute(cmd)
+            except:
+                pass
 
-                # Fetch drone IP
-                p.status("Getting drone IP")
-                cmd = 'ip a s eth0 | grep -o "inet .* brd" | grep -o "[0-9]*\\.[0-9]*\\.[0-9]*\\.[0-9]*"'
-                drone_ip = drone.execute(cmd).split("\n")[0]
+            drone.close()
+            log.info(f"Exclusion targets added to reject list on /opt/nessus/etc/nessus/nessusd.rules")
+            log.info("Targets added to reject list successfully.")
 
-                # Add drone IP to nessus rules
-                p.status(f"Adding drone IP {drone_ip} to reject list")
-                cmd = f"echo 'reject {drone_ip}' | sudo tee -a /opt/nessus/etc/nessus/nessusd.rules"
-                drone.execute(cmd)
-
-                # Add targets provided from -e to nessus rules
-                try:
-                    p.status(f"Adding exclude targets from to reject list")
-                    for exclude_target in self.exclude_file:
-                        exclude_target = exclude_target.rstrip()
-                        cmd = f"echo 'reject {exclude_target}' | sudo tee -a /opt/nessus/etc/nessus/nessusd.rules"
-                        drone.execute(cmd)
-                except:
-                    pass
-
-                drone.close()
-                p.success(f"Exclusion targets added to reject list on /opt/nessus/etc/nessus/nessusd.rules")
-                log.info("Targets added to reject list successfully.")
-
-            except Exception as e:
-                if p is not None:
-                    p.failure(e.args[0])
-                log.error(f"Failed to add targets to reject list: {e.args[0]}")
-                exit()
+        except Exception as e:
+            log.error(f"Failed to add targets to reject list: {e.args[0]}")
+            exit()
 
 
     def update_settings(self):
-        with LogContext("Updating settings") as p:
+        log.info("Updating settings")
             # bulletproof standard settings as per policy
-            settings = {
-                "scan_vulnerability_groups": "no",
-                "scan_vulnerability_groups_mixed": "no",
-                "port_range": "all",
-                "severity_basis": "cvss_v3"
-            }
+        settings = {
+            "scan_vulnerability_groups": "no",
+            "scan_vulnerability_groups_mixed": "no",
+            "port_range": "all",
+            "severity_basis": "cvss_v3"
+        }
 
-            try:
-                # nessus requires settings to be updated one by one
-                for name, value in settings.items():
-                    data = {
-                        "setting.0.action": "edit",
-                        "setting.0.name": name,
-                        "setting.0.value": value
-                    }
-                    response = requests.put(self.url + "/settings/advanced", headers=self.api_auth, data=data, verify=False)
-                    if response.status_code != 200:
-                        raise Exception("Could not update settings.")
+        try:
+            # nessus requires settings to be updated one by one
+            for name, value in settings.items():
+                data = {
+                    "setting.0.action": "edit",
+                    "setting.0.name": name,
+                    "setting.0.value": value
+                }
+                response = requests.put(self.url + "/settings/advanced", headers=self.api_auth, data=data, verify=False)
+                if response.status_code != 200:
+                    raise Exception("Could not update settings.")
 
-                p.success()
-
-            except Exception as e:
-                p.failure(str(e))
-                exit()
+        except Exception as e:
+            log.error(str(e))
+            exit()
 
     def import_policies(self):
-        with LogContext("Importing policies") as p:
-            try:
-                # check if policy file already exists:
-                policy_name = self.policy_file_name.rsplit(".", 1)[0]
-                if "\\" in policy_name:
-                    policy_name = policy_name.split("\\")[-1]
-                elif "/" in policy_name:
-                    policy_name = policy_name.split("/")[-1]
-                response = requests.get(self.url + "/policies", headers=self.api_auth, verify=False)
-                if policy_name in response.text:
-                    p.failure("Policy file already exists, skipping import")
-                    return
+        log.info("Importing policies")
+        try:
+            # check if policy file already exists:
+            policy_name = self.policy_file_name.rsplit(".", 1)[0]
+            if "\\" in policy_name:
+                policy_name = policy_name.split("\\")[-1]
+            elif "/" in policy_name:
+                policy_name = policy_name.split("/")[-1]
+            response = requests.get(self.url + "/policies", headers=self.api_auth, verify=False)
+            if policy_name in response.text:
+                log.error("Policy file already exists, skipping import")
+                return
 
-                # first, upload the policies file to nessus
-                file = {
-                    "Filedata": (self.policy_file_name, self.policy_file)
-                }
-                response = requests.post(self.url + "/file/upload", headers=self.api_auth, files=file, verify=False)
+            # first, upload the policies file to nessus
+            file = {
+                "Filedata": (self.policy_file_name, self.policy_file)
+            }
+            response = requests.post(self.url + "/file/upload", headers=self.api_auth, files=file, verify=False)
 
-                # then, retrieve the file and post it to policies
-                fileuploaded = json.loads(response.text)["fileuploaded"]
-                data = {
-                    "file": fileuploaded
-                }
-                response = requests.post(self.url + "/policies/import", headers=self.api_auth, data=data, verify=False)
-                if response.status_code == 200:
-                    p.success()
+            # then, retrieve the file and post it to policies
+            fileuploaded = json.loads(response.text)["fileuploaded"]
+            data = {
+                "file": fileuploaded
+            }
+            response = requests.post(self.url + "/policies/import", headers=self.api_auth, data=data, verify=False)
+            if response.status_code == 200:
+                log.info("Imported policies")
 
-                else:
-                    raise Exception("Could not import policies.")
+            else:
+                raise Exception("Could not import policies.")
 
-            except Exception as e:
-                p.failure(e.args[0])
-                exit()
+        except Exception as e:
+            log.error(e)
+            exit()
 
 
     def create_scan(self, launch):
-        with LogContext("Creating new scan") as p:
-            try:
-                # check if scan name already exists first:
-                if self.get_scan_info() is not None:
-                    p.failure("Scan name already exists")
-                    return
+        log.info("Creating new scan")
+        try:
+            # check if scan name already exists first:
+            if self.get_scan_info() is not None:
+                log.error("Scan name already exists")
+                return
 
-                project_name = self.project_name
+            project_name = self.project_name
 
-                # get policy id
-                policies = json.loads(requests.get(self.url + "/policies", headers=self.api_auth, verify=False).text)["policies"]
-                policy = next((p for p in policies if p["name"] == self.policy_name), None)
-                if policy is None:
-                    raise Exception(f"No policy found with name {self.policy_name}")
-                policy_id = policy["id"]
-                file = {
-                        "Filedata": ("targets.txt", self.targets_file)
-                    }
-                response = requests.post(self.url + "/file/upload", headers=self.api_auth, files=file, verify=False)
-                if response.status_code != 200:
-                    raise Exception("Failed to upload targets file")
-
-                # send "create scan" request
-                data = {
-                    "uuid": self.token_keys["scan_uuid"],
-                    "settings": {
-                        "name": project_name,
-                        "policy_id": policy_id,
-                        "launch_now": launch,
-                        "enabled": False,
-                        "scanner_id": "1",
-                        "folder_id": 3,
-                        "file_targets": "targets.txt",
-                        "description": "No host Discovery\nAll TCP port\nAll Service Discovery\nDefault passwords being tested\nGeneric Web Test\nNo compliance or local Check\nNo DOS plugins\n",
-                    }
+            # get policy id
+            policies = json.loads(requests.get(self.url + "/policies", headers=self.api_auth, verify=False).text)["policies"]
+            policy = next((p for p in policies if p["name"] == self.policy_name), None)
+            if policy is None:
+                raise Exception(f"No policy found with name {self.policy_name}")
+            policy_id = policy["id"]
+            file = {
+                    "Filedata": ("targets.txt", self.targets_file)
                 }
-                response = requests.post(self.url + "/scans", headers=self.token_auth, json=data, verify=False)
-                if response.status_code != 200:
-                    raise Exception("Failed to create scan")
+            response = requests.post(self.url + "/file/upload", headers=self.api_auth, files=file, verify=False)
+            if response.status_code != 200:
+                raise Exception("Failed to upload targets file")
 
-                p.success()
+            # send "create scan" request
+            data = {
+                "uuid": self.token_keys["scan_uuid"],
+                "settings": {
+                    "name": project_name,
+                    "policy_id": policy_id,
+                    "launch_now": launch,
+                    "enabled": False,
+                    "scanner_id": "1",
+                    "folder_id": 3,
+                    "file_targets": "targets.txt",
+                    "description": "No host Discovery\nAll TCP port\nAll Service Discovery\nDefault passwords being tested\nGeneric Web Test\nNo compliance or local Check\nNo DOS plugins\n",
+                }
+            }
+            response = requests.post(self.url + "/scans", headers=self.token_auth, json=data, verify=False)
+            if response.status_code != 200:
+                raise Exception("Failed to create scan")
+            else:
+                log.info("Scan created")
 
-            except Exception as e:
-                p.failure(str(e))
-                exit()
+        except Exception as e:
+            log.error(str(e))
+            exit()
 
 
     def get_scan_info(self):
@@ -664,34 +686,34 @@ class Nessus:
             exit()
 
     def scan_action(self, action):
-        with LogContext(f"Sending {action} request to \"{self.project_name}\"") as p:
-            try:
-                scan_id = self.get_scan_info()["id"]
-                response = requests.post(self.url + f"/scans/{scan_id}/{action}", headers=self.token_auth, verify=False)
-                if response.status_code == 200:
-                    p.success()
-                else:
-                    raise Exception("Could not complete scan action")
+        log.info(f"Sending {action} request to \"{self.project_name}\"")
+        try:
+            scan_id = self.get_scan_info()["id"]
+            response = requests.post(self.url + f"/scans/{scan_id}/{action}", headers=self.token_auth, verify=False)
+            if response.status_code == 200:
+                log.info(f"Scan {action} completed successfully")
+            else:
+                raise Exception("Could not complete scan action")
 
-            except Exception as e:
-                p.failure(e.args[0])
-                exit()
+        except Exception as e:
+            log.error(e.args[0])
+            exit()
 
     def monitor_scan(self):
         status = self.get_scan_info()["status"]
         time_elapsed = 0
-        with LogContext(f"Scan status") as p:
-            while status == "running":
-                p.status(status)
-                status = self.get_scan_info()["status"]           
-                time.sleep(60)
-                time_elapsed += 1
-                if time_elapsed == 5:
-                    with LogContext("Reauthenticating"):
-                        self.get_auth(verbose=False)
-                    time_elapsed = 0
+        log.info(f"Scan status")
+        while status == "running":
+            log.info(status)
+            status = self.get_scan_info()["status"]           
+            time.sleep(60)
+            time_elapsed += 1
+            if time_elapsed == 5:
+                with log.info("Reauthenticating"):
+                    self.get_auth(verbose=False)
+                time_elapsed = 0
 
-            p.success(status)
+            log.info(status)
 
 
     def export_scan(self):
@@ -780,36 +802,45 @@ class Nessus:
 
             for k,v in formats.items():
             
-                with LogContext(f"Exporting {k} file") as p:
-                    # get scan token
-                    data = v
-                    response = requests.post(self.url + "/scans/" + str(scan_id) + "/export", headers=self.token_auth, json=data, verify=False)
-                    if response.status_code != 200:
-                        raise Exception(f"Exporting {k} file failed with status code {response.status_code}")
-                    scan_token = json.loads(response.text)["token"]
+                log.info(f"Exporting {k} file")
+                # get scan token
+                data = v
+                response = requests.post(self.url + "/scans/" + str(scan_id) + "/export", headers=self.token_auth, json=data, verify=False)
+                if response.status_code != 200:
+                    raise Exception(f"Exporting {k} file failed with status code {response.status_code}")
+                scan_token = json.loads(response.text)["token"]
 
-                    # download file
-                    while True:
-                        response = requests.get(self.url + "/tokens/" + scan_token + "/download", headers=self.token_auth, verify=False)
-                        if "not ready" in response.text:
-                            time.sleep(5)
+                # download file
+                while True:
+                    response = requests.get(self.url + "/tokens/" + scan_token + "/download", headers=self.token_auth, verify=False)
+                    if "not ready" in response.text:
+                        time.sleep(5)
 
-                        elif response.status_code == 200:
-                            file_path = os.path.join(self.output_folder, self.project_name + f".{k}")
-                            open(file_path, "wb").write(response.content)
-                            p.success(f"Done. Scan file exported to \"{file_path}\"")
-                            break
+                    elif response.status_code == 200:
+                        file_path = os.path.join(self.output_folder, self.project_name + f".{k}")
+                        open(file_path, "wb").write(response.content)
+                        log.info(f"Done. Scan file exported to \"{file_path}\"")
+                        break
 
-                        else:
-                            raise Exception(f"Downloading {k} file failed with status code {response.status_code}")
+                    else:
+                        raise Exception(f"Downloading {k} file failed with status code {response.status_code}")
 
             return self.project_name + ".nessus"
 
         except Exception as e:
-            with LogContext("Exporting scan failed") as p:
-                p.failure(e.args[0])
-                exit()
+            log.error(e.args[0])
+            exit()
                 
+
+    # def initialize(self):
+    #     if self.mode == 'manual':
+    #         execute = Lackey(
+    #             drone=self.drone,
+    #             username=self.username,
+    #             password=self.password,
+    #             file_path=self.file_path,
+    #             mode=self.mode
+    #         )
 
     # Mode handlers
     def deploy(self):
@@ -818,7 +849,7 @@ class Nessus:
         self.import_policies()
         self.create_scan(True)
         self.monitor_scan()
-        scan_file = self.export_scan()
+        file_path = self.export_scan()
         # self.analyze_results(scan_file)
 
     def trigger(self):
@@ -846,14 +877,19 @@ class Nessus:
         self.export_scan()
         # scan_file = self.export_scan()
         # self.analyze_results(scan_file)
-        
+
+
+
+
 def get_creds():
     username = input("username: ").rstrip()
     password = getpass.getpass("password: ")
     print("\n")
     return username, password
 
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGINT, signal_handler)
     parser = argparse.ArgumentParser(
         usage = "deployer.py [OPTIONS]",
         formatter_class = argparse.RawTextHelpFormatter,
@@ -877,7 +913,7 @@ if __name__ == "__main__":
         "export: export scan results, analyze results\n" \
         "manual: perform nmap scans and manual finding verification"
     )
-    parser.add_argument("-d", "--drone", required=True, help="drone name or IP")
+    parser.add_argument("-d", "--drone", required=False, help="drone name or IP")
     parser.add_argument("-c", "--client-name", dest="client", required=False, help="client name or project name (used to name the scan and output files)")
     parser.add_argument("-p", "--policy-file", dest="policy", required=False, help="nessus policy file", type=argparse.FileType('rb'))
     parser.add_argument("-t", "--targets-file", dest="targets", required=False, help="targets file", type=argparse.FileType('r'))
@@ -889,7 +925,7 @@ if __name__ == "__main__":
     parser.add_argument("-q", "--supported", dest="supported", required=False, action="store_const", const=True, help="prints a list of supported plugins based off user provided csv")
     parser.add_argument("-l", "--local", dest="local", required=False, action="store_const", const=True, help="run manual checks on your local machine instead of over ssh")
     args = parser.parse_args()
-    c = Colours()
+
     # Check args requirements for each mode
     if args.mode == "analyze":
         if not args.scan_file:
@@ -899,29 +935,45 @@ if __name__ == "__main__":
         
         
     if args.mode == "manual":
-        # Nessus.get_auth = True
-        if args.supported:
+        if args.supported and os.path.getsize(args.file) != 0:
             get_supported_plugins()
             exit()
             
+        if args.file:
+            if os.path.getsize(args.file) == 0:
+                log.error("CSV file is empty!")
+                exit()
+            if not args.file.endswith(".csv"):
+                log.error("The file must be of type .csv")
+                exit()
+            if not os.path.isfile(args.file):
+                log.error("File does not exist")
+            else:
+                pass
+
+        if not args.file:
+            log.error("You must provide a csv file (-f)")
+            exit()
+
         if args.supported and not args.file:
             log.error("You must provide a csv file (-f)")
             exit()
-        if not args.file.endswith(".csv"):
-            print(c.red,"Error: The file must be of type .csv")
-            exit()
-    
+        
+
         elif os.path.isfile(args.file) and args.file.endswith(".csv") and args.local:
-            print(c.green,"File exists:", args.file)
-            print(c.blue,"Running script with local checks enabled")
+            log.info(f"File exists: {args.file}")
+            log.info("Running script with local checks enabled")
             username = None
             password = None
+            drone = None
+            
         elif os.path.isfile(args.file) and args.file.endswith(".csv") and not args.supported:
-            print(c.green,"File exists:", args.file)
+            log.info(f"File exists: {args.file}")
             username, password = get_creds()
-        if not os.path.isfile(args.file):
-            print(c.red,"File does not exist:", args.file)
+        else:
+            log.error(f"File does not exist - {args.file}")
             exit()
+        
         
         
     else:
@@ -939,26 +991,28 @@ if __name__ == "__main__":
         username, password = get_creds()
 
     # execute checks
-    execute = Lackey(
-        drone=args.drone,
-        username=username,
-        password=password,
-        file_path=args.file,
-        mode=args.mode
-    )
-    # Initialize nessus
-    nessus = Nessus(
-        drone=args.drone,
-        username=username,
-        password=password,
-        mode=args.mode,
-        project_name=args.client,
-        policy_file=args.policy,
-        targets_file=args.targets,
-        scan_file=args.scan_file,
-        exclude_file=args.exclude_file,
-        output_folder=args.output,
-    )
+    if args.mode == 'manual':
+        execute = Lackey(
+            drone=args.drone,
+            username=username,
+            password=password,
+            file_path=args.file,
+            mode=args.mode
+        )
+    # # Initialize nessus
+    else:
+        nessus = Nessus(
+            drone=args.drone,
+            username=username,
+            password=password,
+            mode=args.mode,
+            project_name=args.client,
+            policy_file=args.policy,
+            targets_file=args.targets,
+            scan_file=args.scan_file,
+            exclude_file=args.exclude_file,
+            output_folder=args.output,
+        )
     
     
     # Mode handler
@@ -990,6 +1044,7 @@ if __name__ == "__main__":
         nessus.export()
 
     elif args.mode == "manual":
-        print(c.green,f"Performing manual testing\n{c.yellow} All scan output will be saved in the {c.bold}evidence{c.rc} directoy{c.rc}")
+        log.info(f"Performing manual testing - All scan output will be saved in the evidence directoy")
         execute.manual_tests()		
-    
+        log.info("Script finished running")
+        execute.print_unknown_files()

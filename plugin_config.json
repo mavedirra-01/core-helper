@@ -14,13 +14,13 @@
             ],
             "option": "{{serviceVersion}}"
         },
-        "custom_ntp_mode6": {
+        "ntp_mode6": {
             "ids": [
                 "97861"
             ],
             "option": "ntpq -c rv"
         },
-        "custom_smb_targets": {
+        "smb_targets": {
             "ids": [
                 "57608"
             ],
@@ -149,25 +149,25 @@
             ],
             "option": "{{serviceVersion}}"
         },
-        "custom_unix_os_version": {
+        "unix_os_version": {
             "ids": [
                 "33850"
             ],
             "option": "{{osVersion}}"
         },
-        "custom_windows_os_version": {
+        "windows_os_version": {
             "ids": [
                 "108797"
             ],
             "option": "{{osVersion}}"
         },
-        "custom_snmp_check": {
+        "snmp_check": {
             "ids": [
                 "41028"
             ],
             "option": "snmp-check -v 2c -c public -w"
         },
-        "custom_dns_server_cache_snooping_remote_information_disclosure": {
+        "dns_server_cache_snooping_remote_information_disclosure": {
             "ids": [
                 "12217"
             ],
@@ -202,6 +202,36 @@
                 "101025"
             ],
             "option": "{{serviceVersion}}"
+        },
+        "ssl_medium_strength_cipher_suites_supported": {
+            "ids": [
+                "42873"
+            ],
+            "option": "{{sslCiphers}}"
+        },
+        "browsable_web_directories": {
+            "ids": [
+                "40984"
+            ],
+            "option": "FIXME"
+        },
+        "unsupported_web_server_detection": {
+            "ids": [
+                "34460"
+            ],
+            "option": "{{serviceVersion}}"
+        },
+        "web_application_potentially_vulnerable_to_clickjacking": {
+            "ids": [
+                "85582"
+            ],
+            "option": "FIXME"
+        },
+        "web_server_allows_password_auto-completion": {
+            "ids": [
+                "42057"
+            ],
+            "option": "FIXME"
         }
     }
 }
