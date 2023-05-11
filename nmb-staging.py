@@ -528,10 +528,14 @@ class Nessus:
             # Connect to the SSH server
             log.info("Connecting to the ssh server")
             drone = Drone(self.drone, self.username, self.password)
-
+            
+            log.info("Getting drone device name")
+            cmd = "ip a | awk '/^[0-9]+:/{print $2}' | sed 's/://' | grep -v lo"
+            drone_device = drone.execute(cmd).split("\n")[0]
+            
             # Fetch drone IP
             log.info("Getting drone IP")
-            cmd = 'ip a s eth0 | grep -o "inet .* brd" | grep -o "[0-9]*\\.[0-9]*\\.[0-9]*\\.[0-9]*"'
+            cmd = f'ip a s {drone_device} | grep -o "inet .* brd" | grep -o "[0-9]*\\.[0-9]*\\.[0-9]*\\.[0-9]*"'
             drone_ip = drone.execute(cmd).split("\n")[0]
 
             # Add drone IP to nessus rules
